@@ -1,0 +1,51 @@
+export const darkTheme = {
+  // Current colors become dark theme
+  primary: '#0E2148',
+  secondary: '#483AA0',
+  accent: '#7965C1',
+  gold: '#E3D095',
+  text: '#FFFFFF',
+  textSecondary: 'rgba(255,255,255,0.8)',
+  textMuted: 'rgba(255,255,255,0.6)',
+  background: '#0E2148',
+  surface: 'rgba(255,255,255,0.1)',
+  surfaceSecondary: '#232e4a',
+  border: 'rgba(255,255,255,0.2)',
+  success: '#4caf50',
+  warning: '#E3D095',
+  error: '#ff6b6b',
+  card: 'rgba(255,255,255,0.1)',
+  shadow: 'rgba(0,0,0,0.3)',
+  gradientStart: '#0E2148',
+  gradientEnd: '#483AA0',
+  tabBar: 'rgba(14, 33, 72, 0.95)',
+  tabBarInactive: 'rgba(255, 255, 255, 0.6)',
+  tabBarActive: '#E3D095',
+}
+
+export const lightTheme = {
+  // Light theme colors
+  primary: '#FFFFFF',
+  secondary: '#F8F9FA',
+  accent: '#7965C1',
+  gold: '#E3D095',
+  text: '#232e4a',
+  textSecondary: 'rgba(35,46,74,0.8)',
+  textMuted: 'rgba(35,46,74,0.6)',
+  background: '#FFFFFF',
+  surface: '#F8F9FA',
+  surfaceSecondary: '#E9ECEF',
+  border: 'rgba(35,46,74,0.2)',
+  success: '#4caf50',
+  warning: '#E3D095',
+  error: '#ff6b6b',
+  card: '#FFFFFF',
+  shadow: 'rgba(0,0,0,0.1)',
+  gradientStart: '#FFFFFF',
+  gradientEnd: '#F8F9FA',
+  tabBar: 'rgba(255,255,255,0.95)',
+  tabBarInactive: 'rgba(35,46,74,0.6)',
+  tabBarActive: '#7965C1',
+}
+
+export const getTheme = (isDark) => isDark ? darkTheme : lightTheme 
