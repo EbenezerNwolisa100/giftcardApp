@@ -30,6 +30,9 @@ import BuyGiftcard from "./screens/BuyGiftcard";
 import BuyGiftcardForm from "./screens/BuyGiftcardForm";
 import Wallet from "./screens/Wallet";
 import FundWallet from "./screens/FundWallet";
+import TransactionDetails from "./screens/TransactionDetails";
+import SellGiftcardVariants from "./screens/SellGiftcardVariants"
+import BuyGiftcardVariants from "./screens/BuyGiftcardVariants"
 import { ThemeProvider } from "./screens/ThemeContext"
 
 const Stack = createNativeStackNavigator()
@@ -234,7 +237,9 @@ export default function App() {
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Main" component={LoggedInTabs} />
             <Stack.Screen name="SellGiftcardForm" component={SellGiftcardForm} />
+            <Stack.Screen name="SellGiftcardVariants" component={SellGiftcardVariants} />
             <Stack.Screen name="BuyGiftcardForm" component={BuyGiftcardForm} />
+            <Stack.Screen name="BuyGiftcardVariants" component={BuyGiftcardVariants} />
             <Stack.Screen name="ChangePassword" component={ChangePassword} />
             <Stack.Screen name="TransactionPin" component={TransactionPin} />
             <Stack.Screen name="Withdraw" component={Withdraw} />
@@ -246,6 +251,7 @@ export default function App() {
             <Stack.Screen name="BankDetails" component={BankDetails} />
             <Stack.Screen name="Wallet" component={Wallet} />
             <Stack.Screen name="FundWallet" component={FundWallet} />
+            <Stack.Screen name="TransactionDetails" component={TransactionDetails} />
           </Stack.Navigator>
         ) : (
           <AuthStack />

@@ -31,15 +31,29 @@ export default function FundWallet() {
   const [paystackLoading, setPaystackLoading] = useState(false);
   const [showPaystackModal, setShowPaystackModal] = useState(false);
   const [bankDetails, setBankDetails] = useState(null);
+  const [bankDetailsLoading, setBankDetailsLoading] = useState(false);
   const [proofImage, setProofImage] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const [processingFee, setProcessingFee] = useState(0);
   const navigation = useNavigation();
   const { theme } = useTheme();
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'processing_fee_flat')
+        .single();
+      if (data) setProcessingFee(Number(data.value));
+    })();
+  }, []);
 
   // Fetch admin bank details if manual transfer is selected
   useFocusEffect(
     React.useCallback(() => {
       if (paymentMethod === 'manual_transfer') {
+        setBankDetailsLoading(true);
         (async () => {
           const { data, error } = await supabase
             .from('admin_bank_details')
@@ -47,7 +61,11 @@ export default function FundWallet() {
             .order('updated_at', { ascending: false })
             .limit(1)
             .single();
-          if (data) setBankDetails(data);
+          setBankDetails(data || null);
+          setBankDetailsLoading(false);
+          if (error) {
+            console.log('Error fetching admin bank details:', error);
+          }
         })();
       }
     }, [paymentMethod])
@@ -83,16 +101,21 @@ export default function FundWallet() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("You must be logged in to fund your wallet.");
 
+        const enteredAmount = Number(amount) || 0;
+        const fee = processingFee;
+        const totalToPay = enteredAmount + fee;
+
         // Create wallet transaction
         const { error: txError } = await supabase.from("wallet_transactions").insert([
           {
             user_id: user.id,
             type: "fund",
-            amount: Number(amount),
+            amount: enteredAmount,
+            fee: fee,
             status: "completed",
             payment_method: 'paystack',
             reference: 'ps_ref_' + Date.now(),
-            description: `Wallet funded via Paystack`,
+            description: `Wallet funded via Paystack (fee: ₦${fee})`,
           }
         ]);
 
@@ -105,7 +128,7 @@ export default function FundWallet() {
           .eq("id", user.id)
           .single();
 
-        const newBalance = (profile?.balance || 0) + Number(amount);
+        const newBalance = (profile?.balance || 0) + enteredAmount;
         const { error: balanceError } = await supabase
           .from("profiles")
           .update({ balance: newBalance })
@@ -142,6 +165,10 @@ export default function FundWallet() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("You must be logged in to fund your wallet.");
 
+      const enteredAmount = Number(amount) || 0;
+      const fee = processingFee;
+      const totalToPay = enteredAmount + fee;
+
       // Upload image to Supabase Storage
       const ext = proofImage.uri.split('.').pop();
       const fileName = `proofs/${user.id}_${Date.now()}.${ext}`;
@@ -160,11 +187,12 @@ export default function FundWallet() {
         {
           user_id: user.id,
           type: "fund",
-          amount: Number(amount),
+          amount: enteredAmount,
+          fee: fee,
           status: "pending",
           payment_method: 'manual_transfer',
           proof_of_payment_url: publicUrl,
-          description: `Wallet funding via bank transfer`,
+          description: `Wallet funding via bank transfer (fee: ₦${fee})`,
         }
       ]);
 
@@ -219,6 +247,16 @@ export default function FundWallet() {
             />
           </View>
 
+          {/* Processing Fee Display */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: theme.text }}>
+              Processing Fee: ₦{processingFee.toLocaleString()}
+            </Text>
+            <Text style={{ color: theme.text, fontWeight: 'bold' }}>
+              Total to Pay: ₦{(Number(amount || 0) + processingFee).toLocaleString()}
+            </Text>
+          </View>
+
           {/* Payment Method Selector */}
           <View style={styles.paymentSection}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Select Payment Method</Text>
@@ -267,37 +305,44 @@ export default function FundWallet() {
           ) : null}
 
           {/* Manual Transfer Details */}
-          {paymentMethod === 'manual_transfer' && bankDetails && (
-            <View style={[styles.bankCard, { backgroundColor: theme.card }]}>
-              <Text style={[styles.bankTitle, { color: theme.text }]}>Transfer to:</Text>
-              <View style={styles.bankDetails}>
-                <Text style={[styles.bankDetail, { color: theme.text }]}>
-                  Bank: {bankDetails.bank_name}
+          {paymentMethod === 'manual_transfer' && (
+            <>
+              {bankDetailsLoading ? (
+                <Text style={{ color: theme.text, textAlign: 'center', marginBottom: 16 }}>
+                  Loading admin bank details...
                 </Text>
-                <Text style={[styles.bankDetail, { color: theme.text }]}>
-                  Account Name: {bankDetails.account_name}
-                </Text>
-                <Text style={[styles.bankDetail, { color: theme.text }]}>
-                  Account Number: {bankDetails.account_number}
-                </Text>
-              </View>
-              
-              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-                <LinearGradient colors={[theme.accent, theme.secondary]} style={styles.uploadGradient}>
-                  <Ionicons name="camera" size={20} color="#fff" />
-                  <Text style={styles.uploadText}>
-                    {proofImage ? 'Change Proof of Payment' : 'Upload Proof of Payment'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              {proofImage && (
-                <View style={styles.imagePreview}>
-                  <Text style={[styles.previewText, { color: theme.textSecondary }]}>Proof of Payment:</Text>
-                  <Image source={{ uri: proofImage.uri }} style={styles.previewImage} />
+              ) : bankDetails ? (
+                <View style={[styles.bankCard, { backgroundColor: theme.card }]}> 
+                  <Text style={[styles.bankTitle, { color: theme.text }]}>Transfer to:</Text>
+                  <View style={styles.bankDetails}>
+                    <Text style={[styles.bankDetail, { color: theme.text }]}>Bank: {bankDetails.bank_name}</Text>
+                    <Text style={[styles.bankDetail, { color: theme.text }]}>Account Name: {bankDetails.account_name}</Text>
+                    <Text style={[styles.bankDetail, { color: theme.text }]}>Account Number: {bankDetails.account_number}</Text>
+                  </View>
                 </View>
+              ) : (
+                <Text style={{ color: 'red', marginBottom: 16, fontWeight: 'bold', textAlign: 'center' }}>
+                  Admin bank details not available. Please contact support.
+                </Text>
               )}
-            </View>
+              {/* Prominent upload proof area */}
+              <View style={[styles.bankCard, { backgroundColor: theme.card, borderWidth: 2, borderColor: '#E3D095' }]}> 
+                <TouchableOpacity style={[styles.uploadButton, { borderWidth: 2, borderColor: '#E3D095', backgroundColor: '#fff' }]} onPress={pickImage}>
+                  <LinearGradient colors={[theme.accent, theme.secondary]} style={styles.uploadGradient}>
+                    <Ionicons name="camera" size={24} color="#fff" />
+                    <Text style={[styles.uploadText, { fontSize: 16 }]}>
+                      {proofImage ? 'Change Proof of Payment' : 'Tap to Upload Proof of Payment'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                {proofImage && (
+                  <View style={styles.imagePreview}>
+                    <Text style={[styles.previewText, { color: theme.textSecondary }]}>Proof of Payment:</Text>
+                    <Image source={{ uri: proofImage.uri }} style={styles.previewImage} />
+                  </View>
+                )}
+              </View>
+            </>
           )}
 
           {/* Submit Button */}

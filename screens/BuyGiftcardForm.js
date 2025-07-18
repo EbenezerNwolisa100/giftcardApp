@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from "react"
 import {
   View,
   Text,
@@ -12,214 +12,100 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TextInput,
-} from "react-native";
-import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
-import { supabase } from "./supabaseClient";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from 'expo-image-picker';
-import Modal from 'react-native-modal';
+} from "react-native"
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native"
+import { supabase } from "./supabaseClient"
+import { LinearGradient } from "expo-linear-gradient"
+import { Ionicons } from "@expo/vector-icons"
+import * as ImagePicker from "expo-image-picker"
+import Modal from "react-native-modal"
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window")
+
+// Update the email sending function to use your PHP endpoint
+const PHP_EMAIL_ENDPOINT = 'https://gibsoninterlining.com.ng/send_email.php'; // <-- Replace with your actual URL
+
+async function sendPurchaseEmails({ userEmail, userName, brand, variant, quantity, totalAmount }) {
+  const adminEmail = 'ebenezernwolisa100@gmail.com';
+  const subject = `Gift Card Purchase Confirmation`;
+  const userBody = `Dear ${userName || 'User'},\n\nYour purchase of ${quantity} ${brand.name} (${variant.name} - $${variant.value}) gift card(s) was successful.\nTotal: ₦${totalAmount.toLocaleString()}\n\nThank you for using our platform!`;
+  const adminBody = `Admin Notification:\n\nA user (${userName || userEmail}) just purchased ${quantity} ${brand.name} (${variant.name} - $${variant.value}) gift card(s).\nTotal: ₦${totalAmount.toLocaleString()}`;
+
+  try {
+    // Send to user
+    await fetch(PHP_EMAIL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: userEmail,
+        subject,
+        body: userBody,
+      }),
+    });
+    // Send to admin
+    await fetch(PHP_EMAIL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: adminEmail,
+        subject: 'New Gift Card Purchase',
+        body: adminBody,
+      }),
+    });
+  } catch (e) {
+    console.log('Failed to send email:', e);
+  }
+}
 
 export default function BuyGiftcardForm() {
-  const { card } = useRoute().params;
-  const navigation = useNavigation();
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('wallet');
-  const [bankDetails, setBankDetails] = useState(null);
-  const [proofImage, setProofImage] = useState(null);
-  const [showPaystackModal, setShowPaystackModal] = useState(false);
-  const [paystackLoading, setPaystackLoading] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const [userBalance, setUserBalance] = useState(0);
-  // Add state for amount and quantity
-  const [amount, setAmount] = useState(card.value.toString());
-  const [quantity, setQuantity] = useState('1');
+  const { brand, variant, quantity } = useRoute().params // 'brand' is now from giftcards_buy_brands, 'variant' includes name, rate, value
+  const navigation = useNavigation()
+  const [loading, setLoading] = useState(false)
+  const [userBalance, setUserBalance] = useState(0)
+
+  // Calculate total based on selected variant value and quantity
+  const calculateTotal = () => {
+    return variant.value * variant.rate * quantity
+  }
 
   // Fetch user balance and admin bank details
   useFocusEffect(
     React.useCallback(() => {
-      (async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+      ;(async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
         if (user) {
           // Get user balance
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('balance')
-            .eq('id', user.id)
-            .single();
-          setUserBalance(profile?.balance || 0);
+          const { data: profile } = await supabase.from("profiles").select("balance").eq("id", user.id).single()
+          setUserBalance(profile?.balance || 0)
         }
-
-        // Fetch admin bank details if manual transfer is selected
-        if (paymentMethod === 'manual_transfer') {
-          const { data, error } = await supabase
-            .from('admin_bank_details')
-            .select('*')
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .single();
-          if (data) setBankDetails(data);
-        }
-      })();
-    }, [paymentMethod])
-  );
-
-  // Image picker for proof of payment
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setProofImage(result.assets[0]);
-    }
-  };
-
-  // Handle Paystack payment (placeholder popup)
-  const handlePaystack = async () => {
-    setPaystackLoading(true);
-    // Simulate Paystack payment success after 2s
-    setTimeout(async () => {
-      setPaystackLoading(false);
-      setShowPaystackModal(false);
-      setFeedback('Paystack payment successful! Completing transaction...');
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("You must be logged in to buy a gift card.");
-        const rate = 1; // Change this if you have a different sell rate
-        const total = Number(amount) * Number(quantity) * rate;
-        const { error } = await supabase.from("giftcard_transactions").insert([
-          {
-            user_id: user.id,
-            type: "buy",
-            giftcard_inventory_id: card.id,
-            brand_id: card.brand_id,
-            brand_name: card.brand_name,
-            amount: Number(amount) * Number(quantity),
-            rate,
-            total,
-            status: "completed",
-            payment_method: 'paystack',
-            paystack_reference: 'ps_ref_' + Date.now(),
-            card_code: card.code,
-            image_url: card.image_url,
-            created_at: new Date().toISOString(),
-          }
-        ]);
-        if (error) {
-          Alert.alert("Transaction Error", error.message);
-        } else {
-          Alert.alert("Success", "Your order has been placed and payment confirmed!", [
-            { text: "OK", onPress: () => navigation.goBack() }
-          ]);
-        }
-        const { error: updateError } = await supabase
-          .from("giftcard_inventory")
-          .update({ sold: true })
-          .eq("id", card.id);
-        if (updateError) {
-          Alert.alert("Warning", "Transaction succeeded but failed to mark card as sold. Please contact support.");
-        }
-      } catch (e) {
-        Alert.alert("Error", e.message || "Failed to place order.");
-      }
-      setFeedback("");
-    }, 2000);
-  };
-
-  // Handle manual transfer
-  const handleManualTransfer = async () => {
-    setLoading(true);
-    setFeedback('Uploading proof and submitting transaction...');
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("You must be logged in to buy a gift card.");
-      if (!proofImage) throw new Error("Please upload proof of payment.");
-      // Upload image to Supabase Storage
-      const ext = proofImage.uri.split('.').pop();
-      const fileName = `proofs/${user.id}_${Date.now()}.${ext}`;
-      const response = await fetch(proofImage.uri);
-      const blob = await response.blob();
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('proofs')
-        .upload(fileName, blob, { contentType: proofImage.type || 'image/jpeg' });
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('proofs').getPublicUrl(fileName);
-      const rate = 1; // Change this if you have a different sell rate
-      const total = Number(amount) * Number(quantity) * rate;
-      const { error } = await supabase.from("giftcard_transactions").insert([
-        {
-          user_id: user.id,
-          type: "buy",
-          giftcard_inventory_id: card.id,
-          brand_id: card.brand_id,
-          brand_name: card.brand_name,
-          amount: Number(amount) * Number(quantity),
-          rate,
-          total,
-          status: "pending",
-          payment_method: 'manual_transfer',
-          proof_of_payment_url: publicUrl,
-          card_code: card.code,
-          image_url: card.image_url,
-          created_at: new Date().toISOString(),
-        }
-      ]);
-      setLoading(false);
-      setFeedback("");
-      if (error) {
-        Alert.alert("Transaction Error", error.message);
-      } else {
-        Alert.alert("Success", "Your order has been placed! Awaiting admin approval.", [
-          { text: "OK", onPress: () => navigation.goBack() }
-        ]);
-      }
-      const { error: updateError2 } = await supabase
-        .from("giftcard_inventory")
-        .update({ sold: true })
-        .eq("id", card.id);
-      if (updateError2) {
-        Alert.alert("Warning", "Transaction succeeded but failed to mark card as sold. Please contact support.");
-      }
-    } catch (e) {
-      setLoading(false);
-      setFeedback("");
-      Alert.alert("Error", e.message || "Failed to place order.");
-    }
-  };
+      })()
+    }, []),
+  )
 
   // Handle wallet payment
   const handleWalletPayment = async () => {
-    const totalAmount = Number(amount) * Number(quantity);
-    
+    const totalAmount = calculateTotal()
+
     if (totalAmount > userBalance) {
-      Alert.alert("Insufficient Balance", "You don't have enough funds in your wallet. Please fund your wallet first.");
-      return;
+      Alert.alert("Insufficient Balance", "You don't have enough funds in your wallet. Please fund your wallet first.")
+      return
     }
 
-    setLoading(true);
-    setFeedback('Processing wallet payment...');
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("You must be logged in to buy a gift card.");
+    setLoading(true)
 
-      // Calculate total
-      const rate = 1; // Change this if you have a different sell rate
-      const total = totalAmount * rate;
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("You must be logged in to buy a gift card.")
 
       // Deduct from wallet
-      const newBalance = userBalance - totalAmount;
-      const { error: balanceError } = await supabase
-        .from("profiles")
-        .update({ balance: newBalance })
-        .eq("id", user.id);
-      
-      if (balanceError) throw balanceError;
+      const newBalance = userBalance - totalAmount
+      const { error: balanceError } = await supabase.from("profiles").update({ balance: newBalance }).eq("id", user.id)
+
+      if (balanceError) throw balanceError
 
       // Create wallet transaction
       const { error: walletTxError } = await supabase.from("wallet_transactions").insert([
@@ -228,55 +114,121 @@ export default function BuyGiftcardForm() {
           type: "purchase",
           amount: totalAmount,
           status: "completed",
-          payment_method: 'wallet',
-          description: `Gift card purchase: ${card.brand_name} - ${card.value}`,
-        }
-      ]);
+          payment_method: "wallet",
+          description: `Gift card purchase: ${brand.name} - ${variant.name} - $${variant.value} x${quantity}`,
+        },
+      ])
 
-      if (walletTxError) throw walletTxError;
+      if (walletTxError) throw walletTxError
 
-      // Create gift card transaction
-      const { error } = await supabase.from("giftcard_transactions").insert([
-        {
-          user_id: user.id,
-          type: "buy",
-          giftcard_inventory_id: card.id,
-          brand_id: card.brand_id,
-          brand_name: card.brand_name,
-          amount: totalAmount,
-          rate,
-          total,
-          status: "completed",
-          payment_method: 'wallet',
-          card_code: card.code,
-          image_url: card.image_url,
-          created_at: new Date().toISOString(),
-        }
-      ]);
+      await completePurchase("wallet", { status: "completed" })
+    } catch (e) {
+      setLoading(false)
+      Alert.alert("Error", e.message || "Failed to process wallet payment.")
+    }
+  }
 
-      if (error) throw error;
+  // Complete the purchase by assigning cards and creating transaction
+  const completePurchase = async (paymentMethod, additionalData = {}) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("You must be logged in.")
 
-      // Mark card as sold
-      const { error: updateError } = await supabase
-        .from("giftcard_inventory")
-        .update({ sold: true })
-        .eq("id", card.id);
+      const totalAmount = calculateTotal()
 
-      if (updateError) {
-        Alert.alert("Warning", "Transaction succeeded but failed to mark card as sold. Please contact support.");
+      // Get available cards for this specific variant and value
+      const { data: cardsToAssign, error: cardsError } = await supabase
+        .from("giftcards_buy")
+        .select("id, code")
+        .eq("buy_brand_id", brand.id) // Use buy_brand_id
+        .eq("variant_name", variant.name)
+        .eq("value", variant.value)
+        .eq("rate", variant.rate) // Ensure rate matches too
+        .eq("sold", false)
+        .is("assigned_to", null)
+        .limit(quantity)
+
+      if (cardsError) throw cardsError
+
+      if (!cardsToAssign || cardsToAssign.length < quantity) {
+        throw new Error(`Not enough cards available. Only ${cardsToAssign?.length || 0} cards available.`)
       }
 
-      setLoading(false);
-      setFeedback("");
-      Alert.alert("Success", "Gift card purchased successfully using wallet funds!", [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
+      // Create transaction first
+      const { data: transactionData, error: transactionError } = await supabase
+        .from("giftcard_transactions")
+        .insert([
+          {
+            user_id: user.id,
+            type: "buy",
+            buy_brand_id: brand.id, // Link to the new buy_brand_id
+            variant_name: variant.name,
+            amount: variant.value * quantity, // Total USD value
+            rate: variant.rate,
+            total: totalAmount,
+            payment_method: paymentMethod,
+            quantity: quantity,
+            card_codes: cardsToAssign.map((c) => c.code),
+            image_url: brand.image_url, // Use brand image for transaction record
+            ...additionalData,
+          },
+        ])
+        .select()
+        .single()
+
+      if (transactionError) throw transactionError
+
+      // Assign cards to user
+      const { error: assignError } = await supabase
+        .from("giftcards_buy")
+        .update({
+          sold: true,
+          assigned_to: user.id,
+          assigned_at: new Date().toISOString(),
+          purchase_transaction_id: transactionData.id,
+        })
+        .in(
+          "id",
+          cardsToAssign.map((c) => c.id),
+        )
+
+      if (assignError) throw assignError
+
+      setLoading(false)
+
+      // Fetch user email and name
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      let userEmail = '';
+      let userName = '';
+      if (currentUser) {
+        const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', currentUser.id).single();
+        userEmail = profile?.email || '';
+        userName = profile?.full_name || '';
+      }
+      await sendPurchaseEmails({
+        userEmail,
+        userName,
+        brand,
+        variant,
+        quantity,
+        totalAmount,
+      });
+
+      const statusMessage =
+        additionalData.status === "pending"
+          ? "Your order has been placed and is awaiting admin approval!"
+          : "Gift card purchased successfully!"
+
+      Alert.alert("Success", statusMessage, [{ text: "OK", onPress: () => navigation.goBack() }])
     } catch (e) {
-      setLoading(false);
-      setFeedback("");
-      Alert.alert("Error", e.message || "Failed to process wallet payment.");
+      setLoading(false)
+      Alert.alert("Error", e.message || "Failed to complete purchase.")
     }
-  };
+  }
 
   return (
     <View style={styles.container}>
@@ -293,158 +245,80 @@ export default function BuyGiftcardForm() {
             <TouchableOpacity
               onPress={() => {
                 if (navigation.canGoBack()) {
-                  navigation.goBack();
+                  navigation.goBack()
                 } else {
-                  navigation.navigate('BuyGiftcard');
+                  navigation.navigate("BuyGiftcard")
                 }
               }}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Buy Gift Card</Text>
+            <Text style={styles.headerTitle}>Complete Purchase</Text>
             <View style={styles.placeholder} />
           </View>
 
-          {/* Card Info */}
-          <View style={styles.cardCard}>
-            <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.cardGradient}>
-              <View style={styles.cardImageContainer}>
-                {card.image_url ? (
-                  <Image source={{ uri: card.image_url }} style={styles.cardImage} resizeMode="contain" />
+          {/* Brand & Variant Info */}
+          <View style={styles.brandCard}>
+            <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.brandGradient}>
+              <View style={styles.brandImageContainer}>
+                {brand.image_url ? (
+                  <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
                 ) : (
-                  <View style={styles.cardImagePlaceholder}>
-                    <Text style={styles.cardImagePlaceholderText}>{card.brand_name ? card.brand_name[0] : "?"}</Text>
+                  <View style={styles.brandImagePlaceholder}>
+                    <Text style={styles.brandImagePlaceholderText}>{brand.name[0]}</Text>
                   </View>
                 )}
               </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardBrand}>{card.brand_name}</Text>
-                <Text style={styles.cardValue}>${card.value}</Text>
-                <Text style={styles.cardCode}>Code: {card.code.slice(0, 4) + "****"}</Text>
+              <View style={styles.brandInfo}>
+                <Text style={styles.brandName}>{brand.name}</Text>
+                <Text style={styles.variantName}>
+                  {variant.name} - ${variant.value}
+                </Text>
+                <Text style={styles.rateText}>₦{variant.rate} per $1</Text>
               </View>
             </LinearGradient>
           </View>
 
-          {/* Amount and Quantity Inputs */}
-          <View style={{ backgroundColor: '#232e4a', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold', marginBottom: 12 }}>Purchase Details</Text>
-
-            <View style={{ marginBottom: 12 }}>
-              <Text style={{ color: '#fff', marginBottom: 4 }}>Amount per Card (₦)</Text>
-              <TextInput
-                style={styles.input}
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="numeric"
-                placeholder="Enter amount"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-              />
-            </View>
-
-            <View style={{ marginBottom: 8 }}>
-              <Text style={{ color: '#fff', marginBottom: 4 }}>Quantity</Text>
-              <TextInput
-                style={styles.input}
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="numeric"
-                placeholder="Enter quantity"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-              />
-            </View>
-
-            <View style={{ backgroundColor: '#483AA0', borderRadius: 8, padding: 12, marginTop: 8 }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-                Total: ₦{(Number(amount) * Number(quantity)).toLocaleString()}
-              </Text>
-            </View>
-          </View>
-
-          {/* Payment Method Selector */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold', marginBottom: 8 }}>Select Payment Method</Text>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <TouchableOpacity
-                style={[styles.methodButton, paymentMethod === 'paystack' && styles.methodButtonActive]}
-                onPress={() => { setPaymentMethod('paystack'); setFeedback('You selected Paystack. You will pay online and your order will be completed instantly.'); }}
-              >
-                <Text style={styles.methodButtonText}>Paystack</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.methodButton, paymentMethod === 'manual_transfer' && styles.methodButtonActive]}
-                onPress={() => { setPaymentMethod('manual_transfer'); setFeedback('You selected Manual Transfer. You must transfer to the admin account and upload proof. Your order will be approved by admin.'); }}
-              >
-                <Text style={styles.methodButtonText}>Manual Transfer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.methodButton, paymentMethod === 'wallet' && styles.methodButtonActive]}
-                onPress={() => { setPaymentMethod('wallet'); setFeedback(`You selected Wallet. Your wallet balance: ₦${userBalance.toLocaleString()}. Available for purchase.`); }}
-              >
-                <Text style={styles.methodButtonText}>Wallet</Text>
-              </TouchableOpacity>
+          {/* Purchase Summary */}
+          <View style={styles.summaryContainer}>
+            <Text style={styles.sectionTitle}>Purchase Summary</Text>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Card Value:</Text>
+                <Text style={styles.summaryValue}>${variant.value}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Quantity:</Text>
+                <Text style={styles.summaryValue}>{quantity}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Rate:</Text>
+                <Text style={styles.summaryValue}>₦{variant.rate}</Text>
+              </View>
+              <View style={[styles.summaryRow, styles.totalRow]}>
+                <Text style={styles.totalLabel}>Total Amount:</Text>
+                <Text style={styles.totalValue}>₦{calculateTotal().toLocaleString()}</Text>
+              </View>
             </View>
           </View>
 
           {/* Wallet Balance Display */}
-          {paymentMethod === 'wallet' && (
-            <View style={{ backgroundColor: '#232e4a', borderRadius: 8, padding: 12, marginBottom: 16 }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', marginBottom: 4 }}>Wallet Balance</Text>
-              <Text style={{ color: '#00b894', fontSize: 16, fontWeight: 'bold' }}>
-                ₦{userBalance.toLocaleString()}
+            <View style={styles.walletContainer}>
+              <Text style={styles.walletTitle}>Wallet Balance</Text>
+              <Text style={styles.walletBalance}>₦{userBalance.toLocaleString()}</Text>
+              <Text style={styles.walletStatus}>
+                {calculateTotal() > userBalance ? "Insufficient balance" : "Sufficient balance"}
               </Text>
-              <Text style={{ color: '#fff', fontSize: 12, marginTop: 4 }}>
-                Total Purchase: ₦{(Number(amount) * Number(quantity)).toLocaleString()}
-              </Text>
-              {Number(amount) * Number(quantity) > userBalance && (
-                <Text style={{ color: '#e17055', fontSize: 12, marginTop: 4 }}>
-                  Insufficient balance. Please fund your wallet.
-                </Text>
-              )}
             </View>
-          )}
 
-          {/* Feedback for user selection */}
-          {feedback ? (
-            <View style={{ backgroundColor: '#232e4a', borderRadius: 8, padding: 12, marginBottom: 16 }}>
-              <Text style={{ color: '#fff' }}>{feedback}</Text>
-            </View>
-          ) : null}
-
-          {/* Manual Transfer Details */}
-          {paymentMethod === 'manual_transfer' && bankDetails && (
-            <View style={{ backgroundColor: '#232e4a', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', marginBottom: 8 }}>Transfer to:</Text>
-              <Text style={{ color: '#fff' }}>Bank: {bankDetails.bank_name}</Text>
-              <Text style={{ color: '#fff' }}>Account Name: {bankDetails.account_name}</Text>
-              <Text style={{ color: '#fff', marginBottom: 8 }}>Account Number: {bankDetails.account_number}</Text>
-              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>{proofImage ? 'Change Proof of Payment' : 'Upload Proof of Payment'}</Text>
-              </TouchableOpacity>
-              {proofImage && (
-                <Image source={{ uri: proofImage.uri }} style={{ width: 120, height: 120, marginTop: 8, borderRadius: 8 }} />
-              )}
-            </View>
-          )}
-
-          {/* Submit Button */}
-          {paymentMethod === 'paystack' ? (
+          {/* If balance is sufficient, show purchase button. If not, show fund wallet button */}
+          {variant && quantity > 0 && quantity <= variant.available_count && (
+            calculateTotal() <= userBalance ? (
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={() => setShowPaystackModal(true)}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.buttonGradient}>
-                <Text style={styles.submitButtonText}>Pay with Paystack</Text>
-                <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : paymentMethod === 'wallet' ? (
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={handleWalletPayment}
-              disabled={loading}
+              style={[styles.purchaseButton, loading && styles.purchaseButtonDisabled]}
+                onPress={handleWalletPayment}
+                disabled={loading}
               activeOpacity={0.8}
             >
               <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.buttonGradient}>
@@ -452,56 +326,40 @@ export default function BuyGiftcardForm() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <>
-                    <Text style={styles.submitButtonText}>Pay with Wallet</Text>
+                      <Text style={styles.purchaseButtonText}>Pay with Wallet</Text>
                     <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
                   </>
                 )}
               </LinearGradient>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={handleManualTransfer}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.buttonGradient}>
-                {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Text style={styles.submitButtonText}>Submit Proof & Order</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.purchaseButton, styles.fundWalletButton]}
+                onPress={() => navigation.navigate("BankDetails")}
+                activeOpacity={0.8}
+              >
+                <LinearGradient colors={["#E3D095", "#7965C1"]} style={styles.buttonGradient}>
+                  <Text style={[styles.purchaseButtonText, { color: "#483AA0" }]}>Fund Wallet</Text>
+                  <Ionicons name="wallet" size={20} color="#483AA0" style={styles.buttonIcon} />
+                </LinearGradient>
+              </TouchableOpacity>
+            )
           )}
 
-          {/* Paystack Modal */}
-          <Modal isVisible={showPaystackModal} onBackdropPress={() => setShowPaystackModal(false)}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center' }}>
-              <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>Pay with Paystack</Text>
-              <Text style={{ color: '#232e4a', marginBottom: 16 }}>This is a demo popup. Integrate your Paystack payment here.</Text>
-              {paystackLoading ? (
-                <ActivityIndicator color="#483AA0" size="large" />
-              ) : (
-                <TouchableOpacity
-                  style={{ backgroundColor: '#483AA0', padding: 12, borderRadius: 8, marginBottom: 8 }}
-                  onPress={handlePaystack}
-                >
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Simulate Paystack Payment</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={() => setShowPaystackModal(false)}>
-                <Text style={{ color: '#483AA0', marginTop: 8 }}>Cancel</Text>
-              </TouchableOpacity>
+          {/* Availability Warning */}
+          {variant && quantity > variant.available_count && (
+            <View style={styles.warningContainer}>
+              <Ionicons name="warning" size={20} color="#e17055" />
+              <Text style={styles.warningText}>
+                Only {variant.available_count} cards available for {variant.name} - ${variant.value}. Please reduce
+                quantity.
+              </Text>
             </View>
-          </Modal>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -522,6 +380,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
+    paddingBottom: 32,
   },
   header: {
     flexDirection: "row",
@@ -541,22 +400,22 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
-  cardCard: {
+  brandCard: {
     borderRadius: 20,
     overflow: "hidden",
-    marginBottom: 32,
+    marginBottom: 24,
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  cardGradient: {
+  brandGradient: {
     flexDirection: "row",
     alignItems: "center",
     padding: 24,
   },
-  cardImageContainer: {
+  brandImageContainer: {
     width: 60,
     height: 60,
     borderRadius: 12,
@@ -565,11 +424,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 16,
   },
-  cardImage: {
+  brandImage: {
     width: 40,
     height: 40,
   },
-  cardImagePlaceholder: {
+  brandImagePlaceholder: {
     width: 40,
     height: 40,
     borderRadius: 8,
@@ -577,41 +436,229 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  cardImagePlaceholderText: {
+  brandImagePlaceholderText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
   },
-  cardInfo: {
+  brandInfo: {
     flex: 1,
   },
-  cardBrand: {
+  brandName: {
     color: "#fff",
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  cardValue: {
+  variantName: {
+    color: "#E3D095",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  rateText: {
+    color: "#E3D095",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  selectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  valueContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 12,
+  },
+  valueChip: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  valueChipSelected: {
+    backgroundColor: "#7965C1",
+    borderColor: "#7965C1",
+  },
+  valueText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  valueTextSelected: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  availabilityText: {
+    color: "#00b894",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  summaryContainer: {
+    marginBottom: 24,
+  },
+  summaryCard: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 16,
+  },
+  summaryValue: {
     color: "#fff",
     fontSize: 16,
-    marginBottom: 4,
+    fontWeight: "600",
   },
-  cardCode: {
-    color: "#fff",
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.2)",
+    paddingTop: 16,
+    marginTop: 8,
+    marginBottom: 0,
+  },
+  totalLabel: {
+    color: "#E3D095",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  totalValue: {
+    color: "#E3D095",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  paymentContainer: {
+    marginBottom: 24,
+  },
+  paymentMethods: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  methodButton: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  methodButtonActive: {
+    backgroundColor: "#7965C1",
+    borderColor: "#7965C1",
+  },
+  methodText: {
+    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
+    fontWeight: "600",
+    marginTop: 8,
+  },
+  methodTextActive: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  walletContainer: {
+    backgroundColor: "rgba(0, 184, 148, 0.1)",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(0, 184, 148, 0.3)",
+    alignItems: "center",
+  },
+  walletTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  walletBalance: {
+    color: "#00b894",
+    fontSize: 24,
+    fontWeight: "bold",
     marginBottom: 4,
   },
-  submitButton: {
+  walletStatus: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+  },
+  feedbackContainer: {
+    backgroundColor: "rgba(227, 208, 149, 0.1)",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(227, 208, 149, 0.3)",
+  },
+  feedbackText: {
+    color: "#E3D095",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  bankDetailsContainer: {
+    marginBottom: 24,
+  },
+  bankCard: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  bankLabel: {
+    color: "#fff",
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  uploadButton: {
+    backgroundColor: "#7965C1",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  uploadText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  proofImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  purchaseButton: {
     borderRadius: 16,
     overflow: "hidden",
-    marginTop: 8,
+    marginBottom: 24,
     elevation: 8,
     shadowColor: "#7965C1",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  submitButtonDisabled: {
+  purchaseButtonDisabled: {
     opacity: 0.7,
   },
   buttonGradient: {
@@ -621,7 +668,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 32,
   },
-  submitButtonText: {
+  purchaseButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
@@ -630,39 +677,76 @@ const styles = StyleSheet.create({
   buttonIcon: {
     marginLeft: 4,
   },
-  methodButton: {
-    backgroundColor: '#232e4a',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    marginRight: 8,
+  fundWalletButton: {
+    backgroundColor: "#E3D095",
+    borderColor: "#7965C1",
     borderWidth: 2,
-    borderColor: 'transparent',
   },
-  methodButtonActive: {
-    borderColor: '#E3D095',
-    backgroundColor: '#483AA0',
-  },
-  methodButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  uploadButton: {
-    backgroundColor: '#483AA0',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  input: {
-    backgroundColor: '#3b5bfd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#fff',
-    fontSize: 16,
+  warningContainer: {
+    backgroundColor: "rgba(225, 112, 85, 0.1)",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: "rgba(225, 112, 85, 0.3)",
   },
-}); 
+  warningText: {
+    color: "#e17055",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 12,
+    flex: 1,
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0E2148",
+    marginBottom: 16,
+  },
+  modalText: {
+    fontSize: 16,
+    color: "#0E2148",
+    marginBottom: 8,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: "rgba(14, 33, 72, 0.7)",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  modalLoader: {
+    marginVertical: 20,
+  },
+  modalButtons: {
+    width: "100%",
+    gap: 12,
+  },
+  modalButton: {
+    backgroundColor: "#483AA0",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  modalCancelButton: {
+    padding: 16,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: "#483AA0",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+})

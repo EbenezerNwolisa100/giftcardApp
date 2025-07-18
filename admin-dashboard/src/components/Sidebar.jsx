@@ -55,6 +55,11 @@ const Sidebar = () => (
             <i className="bi bi-bank me-2"></i> Bank Details
           </NavLink>
         </li>
+        <li className="nav-item">
+          <NavLink to="/settings" className={({isActive}) => 'nav-link' + (isActive ? ' active fw-bold' : '')}>
+            <i className="bi bi-bank me-2"></i> Settings
+          </NavLink>
+        </li>
       </ul>
     </div>
   </nav>

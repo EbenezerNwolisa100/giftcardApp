@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect, useState } from "react"
 import {
   View,
@@ -10,7 +12,6 @@ import {
   Alert,
   StatusBar,
   Dimensions,
-  ScrollView,
   Image,
 } from "react-native"
 import { supabase } from "./supabaseClient"
@@ -37,8 +38,8 @@ const TYPE_COLORS = {
 // Payment method mapping
 const PAYMENT_METHOD_LABELS = {
   wallet: "Wallet",
-  paystack: "Paystack", 
-  manual_transfer: "Manual Transfer"
+  paystack: "Paystack",
+  manual_transfer: "Manual Transfer",
 }
 
 const formatDate = (dateStr) => {
@@ -69,8 +70,6 @@ export default function Transactions({ navigation }) {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
-  const [selectedTx, setSelectedTx] = useState(null)
-  const [modalVisible, setModalVisible] = useState(false)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [tempStatusFilter, setTempStatusFilter] = useState(statusFilter)
 
@@ -90,12 +89,11 @@ export default function Transactions({ navigation }) {
         const { data: giftcardTxs, error: giftcardError } = await supabase
           .from("giftcard_transactions")
           .select(`
-            id, brand_id, amount, total, status, created_at, brand:giftcard_brands(name, image_url), 
-            type, rate, card_code, rejection_reason, payment_method, proof_of_payment_url, paystack_reference,
-            brand_name, image_url,
-            giftcard_inventory:giftcard_inventory_id (
-              code, value, image_url, brand_name
-            )
+            id, type, status, created_at, amount, total, rate, payment_method, proof_of_payment_url, paystack_reference,
+            brand_id, brand_name, variant_id, variant_name, card_code, image_url, rejection_reason, quantity, buy_brand_id, card_codes,
+            sell_brand:brand_id (name, image_url),
+            sell_variant:variant_id (name),
+            buy_brand:buy_brand_id (name, image_url)
           `)
           .eq("user_id", user.id)
           .in("type", ["sell", "buy"])
@@ -115,25 +113,43 @@ export default function Transactions({ navigation }) {
         }
 
         // Normalize and merge giftcard transactions
-        const giftcardTxsNormalized = (giftcardTxs || []).map((tx) => ({
-          ...tx,
-          txType: tx.type,
-          displayType: tx.type === "buy" ? "Buy" : "Sell",
-          displayAmount: tx.total,
-          displayBrand: tx.type === "buy" 
-            ? (tx.giftcard_inventory?.brand_name || tx.brand_name || "Gift Card") 
-            : (tx.brand?.name || "Gift Card"),
-          displayStatus: tx.status,
-          displayDate: tx.created_at,
-          displayId: tx.id,
-          displayCode: tx.type === "buy" ? tx.giftcard_inventory?.code : tx.card_code,
-          paymentMethod: tx.payment_method,
-          proofUrl: tx.proof_of_payment_url,
-          paystackRef: tx.paystack_reference,
-          displayImage: tx.type === "buy" 
-            ? (tx.giftcard_inventory?.image_url || tx.image_url)
-            : tx.brand?.image_url,
-        }))
+        const giftcardTxsNormalized = (giftcardTxs || []).map((tx) => {
+          const isBuy = tx.type === "buy";
+          const brandName = isBuy
+            ? tx.buy_brand?.name || tx.brand_name
+            : tx.sell_brand?.name || tx.brand_name;
+          const brandImage = isBuy
+            ? tx.buy_brand?.image_url || tx.image_url
+            : tx.sell_brand?.image_url || tx.image_url;
+          const variantName = isBuy
+            ? tx.variant_name
+            : tx.sell_variant?.name || tx.variant_name;
+
+          return {
+            ...tx,
+            txType: tx.type,
+            displayType: isBuy ? "Buy" : "Sell",
+            displayAmount: tx.total,
+            displayBrand: brandName || "Gift Card",
+            displayImage: brandImage,
+            variantName: variantName,
+            displayStatus: tx.status,
+            displayDate: tx.created_at,
+            displayId: tx.id,
+            displayCode: isBuy
+              ? Array.isArray(tx.card_codes) && tx.card_codes.length > 0
+                ? tx.card_codes.join(", ")
+                : ""
+              : tx.card_code,
+            paymentMethod: tx.payment_method,
+            proofUrl: tx.proof_of_payment_url,
+            paystackRef: tx.paystack_reference,
+            quantity: tx.quantity,
+            rate: tx.rate,
+            amount: tx.amount,
+            rejection_reason: tx.rejection_reason,
+          };
+        });
 
         const withdrawalTxs = (withdrawals || []).map((tx) => ({
           ...tx,
@@ -146,7 +162,9 @@ export default function Transactions({ navigation }) {
           displayId: tx.id,
         }))
 
-        const allTxs = [...giftcardTxsNormalized, ...withdrawalTxs].sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate))
+        const allTxs = [...giftcardTxsNormalized, ...withdrawalTxs].sort(
+          (a, b) => new Date(b.displayDate) - new Date(a.displayDate),
+        )
         setTransactions(allTxs)
       } catch (err) {
         console.error("Transactions fetch error:", err)
@@ -165,13 +183,7 @@ export default function Transactions({ navigation }) {
   }, [transactions, statusFilter, typeFilter])
 
   const openDetails = (tx) => {
-    setSelectedTx(tx)
-    setModalVisible(true)
-  }
-
-  const closeDetails = () => {
-    setModalVisible(false)
-    setSelectedTx(null)
+    navigation.navigate("TransactionDetails", { transaction: tx })
   }
 
   if (loading) {
@@ -192,10 +204,13 @@ export default function Transactions({ navigation }) {
       <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.headerGradient}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Transactions</Text>
-          <TouchableOpacity style={styles.filterButton} onPress={() => {
-            setTempStatusFilter(statusFilter)
-            setShowFilterModal(true)
-          }}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => {
+              setTempStatusFilter(statusFilter)
+              setShowFilterModal(true)
+            }}
+          >
             <Ionicons name="filter-outline" size={24} color="#E3D095" />
           </TouchableOpacity>
         </View>
@@ -248,13 +263,16 @@ export default function Transactions({ navigation }) {
                     <Image source={{ uri: item.displayImage }} style={styles.transactionImage} resizeMode="contain" />
                   ) : (
                     <View style={[styles.transactionIcon, { backgroundColor: TYPE_COLORS[item.txType] }]}>
-                      <Text style={styles.transactionIconText}>{item.displayBrand[0]}</Text>
+                      <Text style={styles.transactionIconText}>{(item.displayBrand || "?")[0]}</Text>
                     </View>
                   )}
                 </View>
               )}
               <View style={styles.transactionDetails}>
                 <Text style={styles.transactionBrand}>{item.displayBrand}</Text>
+                {item.variantName && (
+                  <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, marginBottom: 2 }}>{item.variantName}</Text>
+                )}
                 <Text style={styles.transactionDate}>{formatDate(item.displayDate)}</Text>
                 {item.paymentMethod && (
                   <Text style={styles.transactionPaymentMethod}>
@@ -286,117 +304,18 @@ export default function Transactions({ navigation }) {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Transaction Details Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeDetails}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedTx && (
-              <>
-                <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>{selectedTx.displayType} Details</Text>
-                  <TouchableOpacity onPress={closeDetails} style={styles.modalCloseButton}>
-                    <Ionicons name="close" size={24} color="#fff" />
-                  </TouchableOpacity>
-                </LinearGradient>
-
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                  <View style={styles.modalDetailRow}>
-                    <Text style={styles.modalDetailLabel}>Transaction ID</Text>
-                    <Text style={styles.modalDetailValue}>{selectedTx.displayId}</Text>
-                  </View>
-
-                  <View style={styles.modalDetailRow}>
-                    <Text style={styles.modalDetailLabel}>Type</Text>
-                    <Text style={styles.modalDetailValue}>{selectedTx.displayType}</Text>
-                  </View>
-
-                  <View style={styles.modalDetailRow}>
-                    <Text style={styles.modalDetailLabel}>Amount</Text>
-                    <Text style={styles.modalDetailValue}>₦{selectedTx.displayAmount?.toLocaleString()}</Text>
-                  </View>
-
-                  <View style={styles.modalDetailRow}>
-                    <Text style={styles.modalDetailLabel}>Status</Text>
-                    <Text style={[styles.modalDetailValue, { color: STATUS_COLORS[selectedTx.displayStatus] }]}>
-                      {selectedTx.displayStatus?.charAt(0).toUpperCase() + selectedTx.displayStatus?.slice(1)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.modalDetailRow}>
-                    <Text style={styles.modalDetailLabel}>Date</Text>
-                    <Text style={styles.modalDetailValue}>{new Date(selectedTx.displayDate).toLocaleString()}</Text>
-                  </View>
-
-                  {selectedTx.txType === "sell" && (
-                    <>
-                      <View style={styles.modalDetailRow}>
-                        <Text style={styles.modalDetailLabel}>Brand</Text>
-                        <Text style={styles.modalDetailValue}>{selectedTx.displayBrand}</Text>
-                      </View>
-                      <View style={styles.modalDetailRow}>
-                        <Text style={styles.modalDetailLabel}>Rate</Text>
-                        <Text style={styles.modalDetailValue}>₦{selectedTx.rate}</Text>
-                      </View>
-                      <View style={styles.modalDetailRow}>
-                        <Text style={styles.modalDetailLabel}>Card Code</Text>
-                        <Text style={styles.modalDetailValue}>{selectedTx.displayCode}</Text>
-                      </View>
-                    </>
-                  )}
-
-                  {selectedTx.txType === "buy" && (
-                    <>
-                      <View style={styles.modalDetailRow}>
-                        <Text style={styles.modalDetailLabel}>Brand</Text>
-                        <Text style={styles.modalDetailValue}>{selectedTx.displayBrand}</Text>
-                      </View>
-                      <View style={styles.modalDetailRow}>
-                        <Text style={styles.modalDetailLabel}>Card Code</Text>
-                        <Text style={styles.modalDetailValue}>{selectedTx.displayCode}</Text>
-                      </View>
-                      {selectedTx.paymentMethod && (
-                        <View style={styles.modalDetailRow}>
-                          <Text style={styles.modalDetailLabel}>Payment Method</Text>
-                          <Text style={styles.modalDetailValue}>
-                            {PAYMENT_METHOD_LABELS[selectedTx.paymentMethod] || selectedTx.paymentMethod}
-                          </Text>
-                        </View>
-                      )}
-                      {selectedTx.paystackRef && (
-                        <View style={styles.modalDetailRow}>
-                          <Text style={styles.modalDetailLabel}>Paystack Ref</Text>
-                          <Text style={styles.modalDetailValue}>{selectedTx.paystackRef}</Text>
-                        </View>
-                      )}
-                      {selectedTx.proofUrl && (
-                        <View style={styles.modalDetailRow}>
-                          <Text style={styles.modalDetailLabel}>Proof of Payment</Text>
-                          <Text style={styles.modalDetailValue}>Uploaded</Text>
-                        </View>
-                      )}
-                    </>
-                  )}
-
-                  {selectedTx.displayStatus === "rejected" && selectedTx.rejection_reason && (
-                    <View style={styles.modalDetailRow}>
-                      <Text style={styles.modalDetailLabel}>Rejection Reason</Text>
-                      <Text style={[styles.modalDetailValue, { color: "#ff6b6b" }]}>{selectedTx.rejection_reason}</Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
       {/* Filter Modal */}
-      <Modal visible={showFilterModal} transparent animationType="fade" onRequestClose={() => setShowFilterModal(false)}>
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.filterModalBox}>
             <Text style={styles.filterModalTitle}>Filter by Status</Text>
             <View style={styles.filterOptionsRow}>
-              {STATUS_OPTIONS.map(option => (
+              {STATUS_OPTIONS.map((option) => (
                 <TouchableOpacity
                   key={option}
                   style={[styles.filterOptionBtn, tempStatusFilter === option && styles.filterOptionBtnActive]}
@@ -413,13 +332,13 @@ export default function Transactions({ navigation }) {
                 <Text style={styles.filterModalBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterModalBtn, { backgroundColor: '#7965C1' }]}
+                style={[styles.filterModalBtn, { backgroundColor: "#7965C1" }]}
                 onPress={() => {
                   setStatusFilter(tempStatusFilter)
                   setShowFilterModal(false)
                 }}
               >
-                <Text style={[styles.filterModalBtnText, { color: '#fff' }]}>Apply</Text>
+                <Text style={[styles.filterModalBtnText, { color: "#fff" }]}>Apply</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -582,74 +501,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContent: {
-    backgroundColor: "#0E2148",
-    borderRadius: 20,
-    width: "90%",
-    maxHeight: "80%",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 20,
-  },
-  modalTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
-  },
-  modalDetailLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  modalDetailValue: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "right",
-    flex: 1,
-    marginLeft: 16,
-  },
   filterModalBox: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
-    alignItems: 'center',
-    width: '85%',
+    alignItems: "center",
+    width: "85%",
   },
   filterModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#232e4a',
+    fontWeight: "bold",
+    color: "#232e4a",
     marginBottom: 18,
   },
   filterOptionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginBottom: 24,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   filterOptionBtn: {
-    backgroundColor: '#f1f2f6',
+    backgroundColor: "#f1f2f6",
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -657,31 +529,31 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   filterOptionBtnActive: {
-    backgroundColor: '#7965C1',
+    backgroundColor: "#7965C1",
   },
   filterOptionText: {
-    color: '#232e4a',
-    fontWeight: '600',
+    color: "#232e4a",
+    fontWeight: "600",
   },
   filterOptionTextActive: {
-    color: '#fff',
+    color: "#fff",
   },
   filterModalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
   filterModalBtn: {
     flex: 1,
-    backgroundColor: '#f1f2f6',
+    backgroundColor: "#f1f2f6",
     borderRadius: 8,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginHorizontal: 6,
   },
   filterModalBtnText: {
-    color: '#232e4a',
-    fontWeight: 'bold',
+    color: "#232e4a",
+    fontWeight: "bold",
     fontSize: 16,
   },
   transactionImageContainer: {
@@ -689,10 +561,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
-    overflow: 'hidden',
-    backgroundColor: '#3b5bfd',
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: "hidden",
+    backgroundColor: "#3b5bfd",
+    justifyContent: "center",
+    alignItems: "center",
   },
   transactionImage: {
     width: 40,

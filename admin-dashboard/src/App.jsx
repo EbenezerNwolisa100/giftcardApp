@@ -15,6 +15,7 @@ import GiftcardBrands from './pages/GiftcardBrands';
 import GiftcardInventory from './pages/GiftcardInventory';
 import SupportRequests from './pages/SupportRequests';
 import BankDetails from './pages/BankDetails';
+import Settings from './pages/Settings'
 
 function App() {
   const [email, setEmail] = useState('');
@@ -141,6 +142,7 @@ function App() {
               <Route path="/giftcard-inventory" element={<GiftcardInventory />} />
               <Route path="/support-requests" element={<SupportRequests />} />
               <Route path="/bank-details" element={<BankDetails />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/dashboard" />} />
             </Routes>
           </main>

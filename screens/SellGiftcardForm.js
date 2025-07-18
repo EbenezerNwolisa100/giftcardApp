@@ -1,151 +1,3 @@
-// import React, { useState } from 'react';
-// import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
-// import { useRoute, useNavigation } from '@react-navigation/native';
-// import * as ImagePicker from 'expo-image-picker';
-// import { supabase } from './supabaseClient';
-
-// export default function SellGiftcardForm() {
-//   const route = useRoute();
-//   const navigation = useNavigation();
-//   const { brand } = route.params;
-//   const [amount, setAmount] = useState('');
-//   const [cardCode, setCardCode] = useState('');
-//   const [image, setImage] = useState(null);
-//   const [uploading, setUploading] = useState(false);
-
-//   const handlePickImage = async () => {
-//     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-//     if (!result.canceled && result.assets && result.assets.length > 0) {
-//       setImage(result.assets[0]);
-//     }
-//   };
-
-//   const handleSubmit = async () => {
-//     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-//       Alert.alert('Error', 'Enter a valid amount.');
-//       return;
-//     }
-//     if (!cardCode) {
-//       Alert.alert('Error', 'Enter the gift card code.');
-//       return;
-//     }
-//     if (!image) {
-//       Alert.alert('Error', 'Upload an image of the gift card.');
-//       return;
-//     }
-//     setUploading(true);
-//     let imageUrl = '';
-//     try {
-//       // Upload image to Supabase Storage
-//       const ext = image.uri.split('.').pop();
-//       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2,8)}.${ext}`;
-//       const response = await fetch(image.uri);
-//       const blob = await response.blob();
-//       const { data, error } = await supabase.storage.from('giftcard-images').upload(fileName, blob, { contentType: image.type || 'image/jpeg' });
-//       if (error) throw error;
-//       const { data: publicUrlData } = supabase.storage.from('giftcard-images').getPublicUrl(fileName);
-//       imageUrl = publicUrlData.publicUrl;
-//     } catch (e) {
-//       setUploading(false);
-//       Alert.alert('Image Upload Error', e.message || 'Failed to upload image.');
-//       return;
-//     }
-//     // Insert transaction
-//     try {
-//       const { data: { user } } = await supabase.auth.getUser();
-//       const total = Number(amount) * Number(brand.buy_rate);
-//       const { error } = await supabase.from('giftcard_transactions').insert([
-//         {
-//           user_id: user.id,
-//           brand_id: brand.id,
-//           type: 'sell',
-//           amount: Number(amount),
-//           rate: brand.buy_rate,
-//           total,
-//           status: 'pending',
-//           card_code: cardCode,
-//           image_url: imageUrl,
-//         }
-//       ]);
-//       setUploading(false);
-//       if (error) {
-//         Alert.alert('Transaction Error', error.message);
-//       } else {
-//         Alert.alert('Success', 'Your transaction has been submitted!');
-//         navigation.goBack();
-//       }
-//     } catch (e) {
-//       setUploading(false);
-//       Alert.alert('Error', e.message || 'Failed to submit transaction.');
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <View style={styles.brandHeader}>
-//         {brand.image_url ? (
-//           <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
-//         ) : (
-//           <View style={[styles.brandImage, {backgroundColor:'#fff',justifyContent:'center',alignItems:'center'}]}>
-//             <Text style={{color:'#232e4a',fontWeight:'bold'}}>{brand.name[0]}</Text>
-//           </View>
-//         )}
-//         <Text style={styles.brandName}>{brand.name}</Text>
-//         <Text style={styles.rate}>Buy Rate: ₦{brand.buy_rate}</Text>
-//       </View>
-//       <TextInput
-//         style={styles.input}
-//         placeholder="Amount"
-//         placeholderTextColor="#b2bec3"
-//         keyboardType="numeric"
-//         value={amount}
-//         onChangeText={setAmount}
-//       />
-//       <Text style={styles.payout}>You get: ₦{amount && !isNaN(amount) ? (Number(amount) * Number(brand.buy_rate)).toLocaleString() : '0'}</Text>
-//       <TextInput
-//         style={styles.input}
-//         placeholder="Gift Card Code"
-//         placeholderTextColor="#b2bec3"
-//         value={cardCode}
-//         onChangeText={setCardCode}
-//       />
-//       <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
-//         {image ? (
-//           <Image source={{ uri: image.uri }} style={styles.previewImage} />
-//         ) : (
-//           <Text style={styles.imagePickerText}>Upload Image</Text>
-//         )}
-//       </TouchableOpacity>
-//       <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={uploading}>
-//         {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit</Text>}
-//       </TouchableOpacity>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#10182b', padding: 20 },
-//   brandHeader: { alignItems: 'center', marginBottom: 24 },
-//   brandImage: { width: 70, height: 50, borderRadius: 8, marginBottom: 10 },
-//   brandName: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
-//   rate: { color: '#b2bec3', fontSize: 15, marginBottom: 8 },
-//   input: { backgroundColor: '#232e4a', borderRadius: 10, color: '#fff', fontSize: 16, padding: 14, marginBottom: 12 },
-//   payout: { color: '#00b894', fontWeight: 'bold', fontSize: 16, marginBottom: 12 },
-//   imagePicker: { backgroundColor: '#232e4a', borderRadius: 10, alignItems: 'center', justifyContent: 'center', height: 120, marginBottom: 16 },
-//   imagePickerText: { color: '#b2bec3', fontSize: 16 },
-//   previewImage: { width: 120, height: 100, borderRadius: 8 },
-//   submitBtn: { backgroundColor: '#3b5bfd', borderRadius: 10, alignItems: 'center', paddingVertical: 16, marginTop: 8 },
-//   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-// }); 
-
-
-
-
-
-
-
-"use client"
-
 import { useState } from "react"
 import {
   View,
@@ -174,6 +26,7 @@ export default function SellGiftcardForm() {
   const route = useRoute()
   const navigation = useNavigation()
   const { brand } = route.params
+  const selectedVariant = brand.selectedVariant
   const [amount, setAmount] = useState("")
   const [cardCode, setCardCode] = useState("")
   const [image, setImage] = useState(null)
@@ -236,14 +89,16 @@ export default function SellGiftcardForm() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      const total = Number(amount) * Number(brand.buy_rate)
+      const total = Number(amount) * Number(selectedVariant.sell_rate)
       const { error } = await supabase.from("giftcard_transactions").insert([
         {
           user_id: user.id,
           brand_id: brand.id,
+          variant_id: selectedVariant.id,
+          variant_name: selectedVariant.name,
           type: "sell",
           amount: Number(amount),
-          rate: brand.buy_rate,
+          rate: selectedVariant.sell_rate,
           total,
           status: "pending",
           card_code: cardCode,
@@ -260,7 +115,7 @@ export default function SellGiftcardForm() {
         },
         {
           text: "OK",
-          onPress: () => navigation.goBack(),
+          onPress: () => navigation.navigate("SellGiftcard"),
         },
       ])
     } catch (e) {
@@ -271,7 +126,7 @@ export default function SellGiftcardForm() {
 
   const calculatePayout = () => {
     if (!amount || isNaN(amount)) return 0
-    return Number(amount) * Number(brand.buy_rate)
+    return Number(amount) * Number(selectedVariant.sell_rate)
   }
 
   return (
@@ -295,7 +150,7 @@ export default function SellGiftcardForm() {
             <View style={styles.placeholder} />
           </View>
 
-          {/* Brand Info */}
+          {/* Brand & Variant Info */}
           <View style={styles.brandCard}>
             <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.brandGradient}>
               <View style={styles.brandImageContainer}>
@@ -309,9 +164,9 @@ export default function SellGiftcardForm() {
               </View>
               <View style={styles.brandInfo}>
                 <Text style={styles.brandName}>{brand.name}</Text>
+                <Text style={styles.variantName}>{selectedVariant.name}</Text>
                 <View style={styles.rateContainer}>
-                  {/* <Ionicons name="trending-up" size={16} color="#E3D095" /> */}
-                  <Text style={styles.rateText}>₦{brand.buy_rate} per $1</Text>
+                  <Text style={styles.rateText}>₦{selectedVariant.sell_rate} per $1</Text>
                 </View>
               </View>
             </LinearGradient>
@@ -340,7 +195,7 @@ export default function SellGiftcardForm() {
                   </View>
                   <View style={styles.payoutRow}>
                     <Text style={styles.payoutLabel}>Rate:</Text>
-                    <Text style={styles.payoutValue}>₦{brand.buy_rate}</Text>
+                    <Text style={styles.payoutValue}>₦{selectedVariant.sell_rate}</Text>
                   </View>
                   <View style={[styles.payoutRow, styles.totalRow]}>
                     <Text style={styles.totalLabel}>You'll Receive:</Text>
@@ -502,6 +357,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 20,
     fontWeight: "bold",
+    marginBottom: 4,
+  },
+  variantName: {
+    color: "#E3D095",
+    fontSize: 16,
+    fontWeight: "600",
     marginBottom: 8,
   },
   rateContainer: {
@@ -512,7 +373,6 @@ const styles = StyleSheet.create({
     color: "#E3D095",
     fontSize: 16,
     fontWeight: "600",
-    marginLeft: 6,
   },
   formContainer: {
     gap: 24,
