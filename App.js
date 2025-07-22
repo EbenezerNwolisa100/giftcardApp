@@ -77,12 +77,11 @@ function LoggedInTabs() {
             iconName = "dashboard"
           } else if (route.name === "Transactions") {
             iconName = "receipt-long"
-          } else if (route.name === "SellGiftcard") {
-            iconName = "card-giftcard"
-          } else if (route.name === "BuyGiftcard") {
-            iconName = "shopping-cart"
+          } else if (route.name === "Rates") {
+            iconName = "trending-up"
+          } else if (route.name === "Support") {
+            iconName = "support-agent"
           } else if (route.name === "Profile") {
-            iconName = "person"
             IconComponent = Ionicons
             iconName = "person-outline"
           }
@@ -160,17 +159,17 @@ function LoggedInTabs() {
         }}
       />
       <Tab.Screen
-        name="SellGiftcard"
-        component={SellGiftcard}
+        name="Rates"
+        component={HottestRatesScreen}
         options={{
-          tabBarLabel: "Sell Card",
+          tabBarLabel: "Rates",
         }}
       />
       <Tab.Screen
-        name="BuyGiftcard"
-        component={BuyGiftcard}
+        name="Support"
+        component={SupportCenter}
         options={{
-          tabBarLabel: "Buy Card",
+          tabBarLabel: "Support",
         }}
       />
       <Tab.Screen
@@ -252,6 +251,8 @@ export default function App() {
             <Stack.Screen name="Wallet" component={Wallet} />
             <Stack.Screen name="FundWallet" component={FundWallet} />
             <Stack.Screen name="TransactionDetails" component={TransactionDetails} />
+            <Stack.Screen name="SellGiftcard" component={SellGiftcard} />
+            <Stack.Screen name="BuyGiftcard" component={BuyGiftcard} />
           </Stack.Navigator>
         ) : (
           <AuthStack />

@@ -13,7 +13,7 @@ const NIGERIAN_BANKS = [
 
 export default function BankDetails() {
   const [bankForm, setBankForm] = useState({ bank_name: NIGERIAN_BANKS[0], account_number: '', account_name: '' });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); 
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');

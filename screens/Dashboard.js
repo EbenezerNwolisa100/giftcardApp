@@ -1,235 +1,3 @@
-// import React, { useEffect, useState } from 'react';
-// import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, FlatList } from 'react-native';
-// import { supabase } from './supabaseClient';
-// import { MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
-// import { useNavigation, useFocusEffect } from '@react-navigation/native';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import NotificationsScreen from './NotificationsScreen';
-// import HottestRatesScreen from './HottestRatesScreen';
-
-// export default function Dashboard() {
-//   const [profile, setProfile] = useState(null);
-//   const [transactions, setTransactions] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [balanceLoading, setBalanceLoading] = useState(false);
-//   const [balanceVisible, setBalanceVisible] = useState(true);
-//   const [unreadCount, setUnreadCount] = useState(0);
-//   const navigation = useNavigation();
-
-//   const fetchProfileAndBalance = async () => {
-//     setBalanceLoading(true);
-//     const { data: { user } } = await supabase.auth.getUser();
-//     if (user) {
-//       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-//       setProfile(profileData);
-//     }
-//     setBalanceLoading(false);
-//   };
-
-//   const formatDate = (dateStr) => {
-//     if (!dateStr) return '';
-//     const d = new Date(dateStr);
-//     return d.toLocaleString(undefined, {
-//       year: 'numeric', month: 'short', day: 'numeric',
-//       hour: '2-digit', minute: '2-digit', hour12: true
-//     });
-//   };
-
-//   useFocusEffect(
-//     React.useCallback(() => {
-//       const fetchData = async () => {
-//         setLoading(true);
-//         const { data: { user } } = await supabase.auth.getUser();
-//         if (user) {
-//           const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-//           setProfile(profileData);
-//           // Fetch giftcard transactions (buy/sell)
-//           const { data: sells } = await supabase
-//             .from('giftcard_transactions')
-//             .select('id, brand_id, amount, total, status, created_at, brand:giftcard_brands(name, image_url), type')
-//             .eq('user_id', user.id)
-//             .in('type', ['sell', 'buy']);
-//           // Fetch withdrawals
-//           const { data: withdrawals } = await supabase
-//             .from('withdrawals')
-//             .select('id, amount, status, created_at, type')
-//             .eq('user_id', user.id);
-//           // Fetch unread notifications count
-//           const { count } = await supabase
-//             .from('notifications')
-//             .select('id', { count: 'exact', head: true })
-//             .eq('user_id', user.id)
-//             .eq('read', false);
-//           setUnreadCount(count || 0);
-//           // Normalize and merge
-//           const sellTxs = (sells || []).map(tx => ({
-//             ...tx,
-//             txType: tx.type,
-//             displayType: tx.type === 'buy' ? 'Buy' : 'Sell',
-//             displayAmount: tx.total,
-//             displayBrand: tx.brand?.name || 'Gift Card',
-//             displayStatus: tx.status,
-//             displayDate: tx.created_at,
-//             displayId: tx.id,
-//           }));
-//           const withdrawalTxs = (withdrawals || []).map(tx => ({
-//             ...tx,
-//             txType: 'withdrawal',
-//             displayType: 'Withdrawal',
-//             displayAmount: tx.amount,
-//             displayBrand: 'Withdrawal',
-//             displayStatus: tx.status,
-//             displayDate: tx.created_at,
-//             displayId: tx.id,
-//           }));
-//           const allTxs = [...sellTxs, ...withdrawalTxs].sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate)).slice(0, 5);
-//           setTransactions(allTxs);
-//         }
-//         setLoading(false);
-//       };
-//       fetchData();
-//       setBalanceVisible(false);
-//     }, [navigation])
-//   );
-
-//   // On mount, load balance visibility state from AsyncStorage
-//   useEffect(() => {
-//     const loadBalanceVisibility = async () => {
-//       try {
-//         const stored = await AsyncStorage.getItem('balanceVisible');
-//         if (stored !== null) setBalanceVisible(stored === 'true');
-//       } catch {}
-//     };
-//     loadBalanceVisibility();
-//   }, []);
-
-//   if (loading) {
-//     return <View style={{flex:1,justifyContent:'center',alignItems:'center'}}><ActivityIndicator size="large" color="#0984e3" /></View>;
-//   }
-
-//   // Header and other sections as a single ListHeaderComponent
-//   const renderHeader = () => (
-//     <>
-//       <View style={styles.header}>
-//         <Text style={styles.username}>{profile?.full_name || 'User'}</Text>
-//         <TouchableOpacity onPress={() => navigation.navigate('NotificationsScreen')} style={{marginLeft:'auto'}}>
-//           <Ionicons name="notifications-outline" size={24} color="#fff" />
-//           {unreadCount > 0 && (
-//             <View style={{position:'absolute',top:-2,right:-2,width:12,height:12,borderRadius:6,backgroundColor:'#d63031',borderWidth:1,borderColor:'#fff'}} />
-//           )}
-//         </TouchableOpacity>
-//       </View>
-//       <Text style={styles.date}>{new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
-//       <View style={styles.balanceCard}>
-//         <Text style={styles.balanceLabel}>Available balance</Text>
-//         <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}>
-//           <Text style={styles.balanceAmount}>{balanceVisible ? `₦ ${profile?.balance?.toLocaleString() || '0.00'}` : '₦ ****'}</Text>
-//           <TouchableOpacity onPress={async () => {
-//             setBalanceVisible(v => {
-//               AsyncStorage.setItem('balanceVisible', (!v).toString());
-//               return !v;
-//             });
-//           }} style={{ marginLeft: 10 }}>
-//             <Ionicons name={balanceVisible ? 'eye-off-outline' : 'eye-outline'} size={22} color="#fff" />
-//           </TouchableOpacity>
-//         </View>
-//         <TouchableOpacity style={styles.withdrawBtn} onPress={() => navigation.navigate('Withdraw')}><Text style={styles.withdrawText}>Withdraw</Text></TouchableOpacity>
-//       </View>
-//       <Text style={styles.sectionTitle}>Pending Actions</Text>
-//       <TouchableOpacity style={styles.pendingAction} onPress={() => navigation.navigate('TransactionPin')}>
-//         <View style={styles.circle} />
-//         <Text style={styles.pendingText}>{profile?.transaction_pin ? 'Change Transaction PIN' : 'Create Transaction PIN'}</Text>
-//         <MaterialIcons name="chevron-right" size={24} color="#fff" style={{marginLeft:'auto'}} />
-//       </TouchableOpacity>
-//       <Text style={styles.sectionTitle}>Get started with Traydah</Text>
-//       <View style={styles.quickActions}>
-//         <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('SellGiftcard')}>
-//           <MaterialIcons name="credit-card" size={28} color="#fff" />
-//           <Text style={styles.quickActionText}>Sell Gift Card</Text>
-//         </TouchableOpacity>
-//         <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('HottestRatesScreen')}>
-//           <FontAwesome name="line-chart" size={28} color="#fff" />
-//           <Text style={styles.quickActionText}>Hottest Rates</Text>
-//         </TouchableOpacity>
-//       </View>
-//       <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:24,marginBottom:8}}>
-//         <Text style={styles.sectionTitle}>Recent Transactions</Text>
-//         <TouchableOpacity onPress={() => navigation.navigate('Transactions')}><Text style={styles.seeAll}>See All</Text></TouchableOpacity>
-//       </View>
-//     </>
-//   );
-
-//   return (
-//     <FlatList
-//       data={transactions}
-//       keyExtractor={item => item.displayId}
-//       renderItem={({item}) => (
-//         <View style={styles.transactionItem}>
-//           <View style={{flexDirection:'row',alignItems:'center'}}>
-//             <View style={styles.brandIcon}>
-//               {item.txType === 'withdrawal' ? (
-//                 <View style={{width:32,height:32,backgroundColor:'#fff',borderRadius:8,justifyContent:'center',alignItems:'center'}}>
-//                   <Text style={{fontWeight:'bold',fontSize:18,color:'#0984e3'}}>W</Text>
-//                 </View>
-//               ) : item.brand?.image_url ? (
-//                 <View style={{width:32,height:32,backgroundColor:'#fff',borderRadius:8,justifyContent:'center',alignItems:'center'}}>
-//                   <Text>{item.brand.name[0]}</Text>
-//                 </View>
-//               ) : (
-//                 <MaterialIcons name="card-giftcard" size={28} color="#fff" />
-//               )}
-//             </View>
-//             <View style={{marginLeft:12}}>
-//               <Text style={styles.txBrand}>{item.displayBrand}</Text>
-//               <Text style={styles.txDate}>{formatDate(item.displayDate)}</Text>
-//             </View>
-//           </View>
-//           <View style={{alignItems:'flex-end'}}>
-//             <Text style={styles.txAmount}>₦{item.displayAmount?.toLocaleString()}</Text>
-//             <Text style={[styles.txStatus, item.displayStatus === 'rejected' ? {color:'#d63031'} : item.txType === 'withdrawal' ? {color:'#0984e3'} : {color:'#00b894'}]}>{item.displayStatus?.charAt(0).toUpperCase() + item.displayStatus?.slice(1)}</Text>
-//             <Text style={{color:'#b2bec3', fontSize:12, marginTop:2}}>{item.displayType}</Text>
-//           </View>
-//         </View>
-//       )}
-//       ListEmptyComponent={<Text style={{color:'#fff',textAlign:'center',marginTop:16}}>No transaction history yet.</Text>}
-//       ListHeaderComponent={renderHeader}
-//       contentContainerStyle={{ paddingBottom: 32, backgroundColor: '#10182b' }}
-//     />
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   header: { flexDirection: 'row', alignItems: 'center', marginTop: 32, marginBottom: 4, paddingHorizontal: 20 },
-//   username: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
-//   date: { color: '#b2bec3', fontSize: 14, marginLeft: 20, marginBottom: 12 },
-//   balanceCard: { backgroundColor: '#1e2a47', borderRadius: 18, margin: 20, padding: 24, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 6 },
-//   balanceLabel: { color: '#b2bec3', fontSize: 15 },
-//   balanceAmount: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-//   withdrawBtn: { backgroundColor: '#3b5bfd', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 32, marginTop: 12 },
-//   withdrawText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-//   sectionTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 20, marginTop: 18, marginBottom: 8 },
-//   pendingAction: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#232e4a', borderRadius: 12, marginHorizontal: 20, padding: 16, marginBottom: 8 },
-//   circle: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: '#fff', marginRight: 12 },
-//   pendingText: { color: '#fff', fontSize: 15 },
-//   quickActions: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginTop: 8 },
-//   quickAction: { backgroundColor: '#232e4a', borderRadius: 12, padding: 20, alignItems: 'center', width: '48%' },
-//   quickActionText: { color: '#fff', fontSize: 15, marginTop: 8 },
-//   seeAll: { color: '#3b5bfd', fontWeight: 'bold', fontSize: 14 },
-//   transactionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#232e4a', borderRadius: 12, marginHorizontal: 20, padding: 16, marginBottom: 10 },
-//   brandIcon: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#3b5bfd', justifyContent: 'center', alignItems: 'center' },
-//   txBrand: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-//   txDate: { color: '#b2bec3', fontSize: 13 },
-//   txAmount: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-//   txStatus: { fontWeight: 'bold', fontSize: 13, marginTop: 2 },
-// }); 
-
-
-
-
-
-
-
-
 "use client"
 
 import React, { useEffect, useState } from "react"
@@ -248,7 +16,7 @@ import { MaterialIcons, Ionicons, FontAwesome } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { LinearGradient } from "expo-linear-gradient"
-import { useTheme } from "./ThemeContext"
+import { useTheme } from "./ThemeContext" // Assuming ThemeContext is available
 
 const { width } = Dimensions.get("window")
 
@@ -256,11 +24,11 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null)
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [balanceLoading, setBalanceLoading] = useState(false)
+  const [balanceLoading, setBalanceLoading] = useState(false) // Not used in provided code, but kept for consistency
   const [balanceVisible, setBalanceVisible] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const navigation = useNavigation()
-  const { theme } = useTheme()
+  const { theme } = useTheme() // Assuming ThemeContext is available
 
   const fetchProfileAndBalance = async () => {
     setBalanceLoading(true)
@@ -294,21 +62,60 @@ export default function Dashboard() {
         const {
           data: { user },
         } = await supabase.auth.getUser()
+
         if (user) {
+          // Fetch profile
           const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single()
           setProfile(profileData)
 
-          const { data: sells } = await supabase
+          // Fetch gift card transactions (sell and buy)
+          const { data: giftcardTxs, error: giftcardError } = await supabase
             .from("giftcard_transactions")
-            .select("id, brand_id, amount, total, status, created_at, brand:giftcard_brands(name, image_url), type")
+            .select(
+              `
+              *,
+              sell_brand:sell_brand_id (name, image_url),
+              sell_variant:sell_variant_id (name, sell_rate),
+              buy_brand:buy_brand_id (name, image_url),
+              buy_item:buy_item_id (variant_name, value, rate)
+            `,
+            )
             .eq("user_id", user.id)
-            .in("type", ["sell", "buy"])
+            .in("type", ["sell", "buy"]) // Ensure we only get sell/buy types
+            .order("created_at", { ascending: false })
+            .limit(5) // Fetch more than 5 to sort all together later
 
-          const { data: withdrawals } = await supabase
+          if (giftcardError) console.error("Error fetching giftcard transactions:", giftcardError)
+
+          // Fetch withdrawals
+          const { data: withdrawals, error: withdrawalsError } = await supabase
             .from("withdrawals")
-            .select("id, amount, status, created_at, type")
+            .select("*")
             .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(5) // Fetch more than 5 to sort all together later
 
+          if (withdrawalsError) console.error("Error fetching withdrawals:", withdrawalsError)
+
+          // Fetch crypto transactions (deposits and withdrawals)
+          const { data: cryptoTxs, error: cryptoError } = await supabase
+            .from("crypto_transactions")
+            .select(
+              `
+              *,
+              crypto_network:crypto_network_id (
+                name,
+                crypto:crypto_id (name, symbol, image_url)
+              )
+            `,
+            )
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(5) // Fetch more than 5 to sort all together later
+
+          if (cryptoError) console.error("Error fetching crypto transactions:", cryptoError)
+
+          // Fetch unread notifications count
           const { count } = await supabase
             .from("notifications")
             .select("id", { count: "exact", head: true })
@@ -316,37 +123,78 @@ export default function Dashboard() {
             .eq("read", false)
           setUnreadCount(count || 0)
 
-          const sellTxs = (sells || []).map((tx) => ({
-            ...tx,
-            txType: tx.type,
-            displayType: tx.type === "buy" ? "Buy" : "Sell",
-            displayAmount: tx.total,
-            displayBrand: tx.brand?.name || "Gift Card",
-            displayStatus: tx.status,
-            displayDate: tx.created_at,
-            displayId: tx.id,
-          }))
+          // Combine all transactions and normalize their structure
+          const allCombinedTxs = []
 
-          const withdrawalTxs = (withdrawals || []).map((tx) => ({
-            ...tx,
-            txType: "withdrawal",
-            displayType: "Withdrawal",
-            displayAmount: tx.amount,
-            displayBrand: "Withdrawal",
-            displayStatus: tx.status,
-            displayDate: tx.created_at,
-            displayId: tx.id,
-          }))
+          // Gift Card Transactions
+          ;(giftcardTxs || []).forEach((tx) => {
+            const isSell = tx.type === "sell"
+            const brandName = isSell ? tx.sell_brand?.name : tx.buy_brand?.name
+            const variantName = isSell ? tx.sell_variant?.name : tx.buy_item?.variant_name
+            const amountDisplay = tx.total?.toLocaleString() || tx.amount?.toLocaleString() || "0.00"
 
-          const allTxs = [...sellTxs, ...withdrawalTxs]
+            allCombinedTxs.push({
+              ...tx,
+              originalType: tx.type, // Store original type for TransactionDetailsScreen
+              displayType: isSell ? "Sell Gift Card" : "Buy Gift Card",
+              displayAmount: amountDisplay,
+              displayBrand: brandName || "Gift Card",
+              displayStatus: tx.status,
+              displayDate: tx.created_at,
+              displayId: `gc-${tx.id}`, // Unique ID for FlatList key
+              icon: isSell ? "credit-card" : "shopping-cart", // MaterialIcons
+              iconColor: "#7965C1",
+            })
+          })
+
+          // Withdrawals
+          ;(withdrawals || []).forEach((tx) => {
+            allCombinedTxs.push({
+              ...tx,
+              originalType: "withdrawal", // Store original type
+              displayType: "Withdrawal",
+              displayAmount: tx.amount?.toLocaleString() || "0.00",
+              displayBrand: "Wallet Withdrawal",
+              displayStatus: tx.status,
+              displayDate: tx.created_at,
+              displayId: `wd-${tx.id}`, // Unique ID for FlatList key
+              icon: "arrow-up", // Ionicons
+              iconColor: "#E3D095",
+            })
+          })
+
+          // Crypto Transactions (Deposits and Withdrawals)
+          ;(cryptoTxs || []).forEach((tx) => {
+            const isDeposit = tx.type === "deposit"
+            const cryptoSymbol = tx.crypto_symbol || tx.crypto_network?.crypto?.symbol || "CRYPTO"
+            const networkName = tx.network_name || tx.crypto_network?.name || "Network"
+            const amountDisplay = tx.fiat_equivalent_naira?.toLocaleString() || "0.00"
+
+            allCombinedTxs.push({
+              ...tx,
+              originalType: `crypto_${tx.type}`, // e.g., 'crypto_deposit', 'crypto_withdrawal'
+              displayType: isDeposit ? `Crypto Deposit (${cryptoSymbol})` : `Crypto Withdrawal (${cryptoSymbol})`,
+              displayAmount: amountDisplay,
+              displayBrand: `${cryptoSymbol} (${networkName})`,
+              displayStatus: tx.status,
+              displayDate: tx.created_at,
+              displayId: `crypto-${tx.id}`, // Unique ID for FlatList key
+              icon: isDeposit ? "arrow-down" : "arrow-up", // Ionicons
+              iconColor: isDeposit ? "#00b894" : "#e17055", // Green for deposit, red for withdrawal
+            })
+          })
+
+          // Sort all transactions by date and get the latest 5
+          const sortedAndLimitedTxs = allCombinedTxs
             .sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate))
             .slice(0, 5)
-          setTransactions(allTxs)
+
+          setTransactions(sortedAndLimitedTxs)
         }
         setLoading(false)
       }
       fetchData()
-      setBalanceVisible(false)
+      // No need to setBalanceVisible(false) here, it's handled by useEffect below
     }, [navigation]),
   )
 
@@ -355,7 +203,9 @@ export default function Dashboard() {
       try {
         const stored = await AsyncStorage.getItem("balanceVisible")
         if (stored !== null) setBalanceVisible(stored === "true")
-      } catch {}
+      } catch (e) {
+        console.error("Failed to load balance visibility:", e)
+      }
     }
     loadBalanceVisibility()
   }, [])
@@ -373,9 +223,8 @@ export default function Dashboard() {
     <>
       <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.headerGradient}>
         <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
-
         {/* Header */}
-      <View style={styles.header}>
+        <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>
               Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
@@ -390,11 +239,10 @@ export default function Dashboard() {
             {unreadCount > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-      </View>
+              </View>
             )}
           </TouchableOpacity>
         </View>
-
         {/* Balance Card */}
         <View style={styles.balanceCard}>
           <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.balanceGradient}>
@@ -414,7 +262,7 @@ export default function Dashboard() {
                   color="rgba(255,255,255,0.8)"
                 />
               </TouchableOpacity>
-      </View>
+            </View>
             <Text style={styles.balanceAmount}>
               {balanceVisible ? `₦${profile?.balance?.toLocaleString() || "0.00"}` : "₦ ****"}
             </Text>
@@ -425,33 +273,47 @@ export default function Dashboard() {
             <TouchableOpacity style={styles.walletButton} onPress={() => navigation.navigate("Wallet")}>
               <Text style={styles.walletButtonText}>My Wallet</Text>
               <Ionicons name="wallet" size={16} color="#7965C1" />
-      </TouchableOpacity>
+            </TouchableOpacity>
           </LinearGradient>
         </View>
       </LinearGradient>
-
       {/* Quick Actions */}
       <View style={styles.quickActionsContainer}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.quickActions}>
+        <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickActionCard} onPress={() => navigation.navigate("SellGiftcard")}>
             <View style={styles.quickActionIcon}>
               <MaterialIcons name="credit-card" size={24} color="#7965C1" />
             </View>
             <Text style={styles.quickActionTitle}>Sell Gift Card</Text>
             <Text style={styles.quickActionSubtitle}>Convert cards to cash</Text>
-        </TouchableOpacity>
-
-          <TouchableOpacity style={styles.quickActionCard} onPress={() => navigation.navigate("HottestRatesScreen")}>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionCard} onPress={() => navigation.navigate("BuyGiftcard")}>
             <View style={styles.quickActionIcon}>
-              <FontAwesome name="line-chart" size={24} color="#7965C1" />
+              <MaterialIcons name="shopping-cart" size={24} color="#7965C1" />
             </View>
-            <Text style={styles.quickActionTitle}>Hottest Rates</Text>
-            <Text style={styles.quickActionSubtitle}>Check current rates</Text>
-        </TouchableOpacity>
+            <Text style={styles.quickActionTitle}>Buy Gift Card</Text>
+            <Text style={styles.quickActionSubtitle}>Convert cash to cards</Text>
+          </TouchableOpacity>
         </View>
+        {/* New Quick Actions for Crypto */}
+        {/* <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickActionCard} onPress={() => navigation.navigate("CryptoDeposit")}>
+            <View style={styles.quickActionIcon}>
+              <FontAwesome name="bitcoin" size={24} color="#7965C1" />
+            </View>
+            <Text style={styles.quickActionTitle}>Deposit Crypto</Text>
+            <Text style={styles.quickActionSubtitle}>Fund wallet with crypto</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionCard} onPress={() => navigation.navigate("CryptoWithdrawal")}>
+            <View style={styles.quickActionIcon}>
+              <FontAwesome name="dollar" size={24} color="#7965C1" />
+            </View>
+            <Text style={styles.quickActionTitle}>Withdraw Crypto</Text>
+            <Text style={styles.quickActionSubtitle}>Withdraw to crypto address</Text>
+          </TouchableOpacity>
+        </View> */}
       </View>
-
       {/* Pending Actions */}
       {!profile?.transaction_pin && (
         <View style={styles.pendingContainer}>
@@ -468,7 +330,6 @@ export default function Dashboard() {
           </TouchableOpacity>
         </View>
       )}
-
       {/* Recent Transactions Header */}
       <View style={styles.transactionsHeader}>
         <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -480,57 +341,67 @@ export default function Dashboard() {
   )
 
   return (
-      <FlatList
-        data={transactions}
+    <FlatList
+      data={transactions} // Use the already limited and sorted transactions
       keyExtractor={(item) => item.displayId}
       renderItem={({ item }) => (
-        <View style={[styles.transactionCard, { backgroundColor: theme.surface }]}>
-          <View style={styles.transactionLeft}>
-            <View
-              style={[
-                styles.transactionIcon,
-                { backgroundColor: item.txType === "withdrawal" ? "#E3D095" : "#7965C1" },
-              ]}
-            >
-              {item.txType === "withdrawal" ? (
-                <Ionicons name="arrow-up" size={20} color="#0E2148" />
-              ) : (
-                <MaterialIcons name="card-giftcard" size={20} color={theme.text} />
+        <TouchableOpacity onPress={() => navigation.navigate("TransactionDetails", { transaction: item })}>
+          <View style={[styles.transactionCard, { backgroundColor: theme.surface }]}>
+            <View style={styles.transactionLeft}>
+              <View
+                style={[
+                  styles.transactionIcon,
+                  {
+                    backgroundColor: item.iconColor, // Use dynamic color
+                  },
+                ]}
+              >
+                {item.originalType === "withdrawal" ? (
+                  <Ionicons name={item.icon} size={20} color="#0E2148" />
+                ) : item.originalType === "sell" || item.originalType === "buy" ? (
+                  <MaterialIcons name={item.icon} size={20} color="#0E2148" />
+                ) : (
+                  <Ionicons name={item.icon} size={20} color="#0E2148" /> // For crypto, use Ionicons
                 )}
               </View>
-            <View style={styles.transactionDetails}>
-              <Text style={[styles.transactionBrand, { color: theme.text }]}>{item.displayBrand}</Text>
-              <Text style={[styles.transactionDate, { color: theme.textMuted }]}>{formatDate(item.displayDate)}</Text>
-              <Text style={[styles.transactionType, { color: theme.textMuted }]}>{item.displayType}</Text>
-            </View>
+              <View style={styles.transactionDetails}>
+                <Text style={[styles.transactionBrand, { color: theme.text }]}>{item.displayBrand}</Text>
+                <Text style={[styles.transactionDate, { color: theme.textMuted }]}>{formatDate(item.displayDate)}</Text>
+                <Text style={[styles.transactionType, { color: theme.textMuted }]}>{item.displayType}</Text>
               </View>
-          <View style={styles.transactionRight}>
-            <Text style={[styles.transactionAmount, { color: theme.text }]}>₦{item.displayAmount?.toLocaleString()}</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor:
-                    item.displayStatus === "rejected"
-                      ? "#ff6b6b"
-                      : item.displayStatus === "pending"
-                        ? "#ffa726"
-                        : "#4caf50",
-                },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {item.displayStatus?.charAt(0).toUpperCase() + item.displayStatus?.slice(1)}
-              </Text>
             </View>
+            <View style={styles.transactionRight}>
+              <Text style={[styles.transactionAmount, { color: theme.text }]}>
+                ₦{item.displayAmount?.toLocaleString()}
+              </Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor:
+                      item.displayStatus === "rejected"
+                        ? "#ff6b6b"
+                        : item.displayStatus === "pending"
+                          ? "#ffa726"
+                          : "#4caf50",
+                  },
+                ]}
+              >
+                <Text style={styles.statusText}>
+                  {item.displayStatus?.charAt(0).toUpperCase() + item.displayStatus?.slice(1)}
+                </Text>
+              </View>
             </View>
           </View>
-        )}
+        </TouchableOpacity>
+      )}
       ListEmptyComponent={
         <View style={styles.emptyState}>
           <Ionicons name="receipt-outline" size={48} color="rgba(255,255,255,0.3)" />
           <Text style={[styles.emptyStateText, { color: theme.text }]}>No transactions yet</Text>
-          <Text style={[styles.emptyStateSubtext, { color: theme.textMuted }]}>Your transaction history will appear here</Text>
+          <Text style={[styles.emptyStateSubtext, { color: theme.textMuted }]}>
+            Your transaction history will appear here
+          </Text>
         </View>
       }
       ListHeaderComponent={renderHeader}
@@ -667,6 +538,7 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 16, // Added margin for spacing between rows of quick actions
   },
   quickActionCard: {
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -823,7 +695,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 16,
   },
   txType: {

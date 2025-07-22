@@ -234,10 +234,10 @@ export default function TransactionDetails({ route, navigation }) {
           )}
 
           {/* Rejection Reason */}
-          {transaction.displayStatus === "rejected" && transaction.rejection_reason && (
+          {(transaction.displayStatus === "rejected" || transaction.status === "rejected") && (transaction.rejection_reason || transaction.rejectionReason) && (
             <View style={styles.rejectionContainer}>
               <Text style={styles.rejectionTitle}>Rejection Reason</Text>
-              <Text style={styles.rejectionText}>{transaction.rejection_reason}</Text>
+              <Text style={styles.rejectionText}>{transaction.rejection_reason || transaction.rejectionReason}</Text>
             </View>
           )}
         </View>
