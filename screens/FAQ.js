@@ -1,47 +1,23 @@
-// import React from 'react';
-// import { View, Text, ScrollView, StyleSheet } from 'react-native';
-
-// const FAQS = [
-//   { q: 'How do I sell a gift card?', a: 'Go to the Sell Giftcard tab, select your brand, enter details, and submit.' },
-//   { q: 'How long does withdrawal take?', a: 'Withdrawals are processed within 24 hours.' },
-//   { q: 'How do I contact support?', a: 'Use the Support Center in your profile to send us a message.' },
-//   { q: 'How do I change my password?', a: 'Go to Profile > Security > Change Password.' },
-// ];
-
-// export default function FAQ() {
-//   return (
-//     <ScrollView style={styles.container}>
-//       <Text style={styles.title}>Frequently Asked Questions</Text>
-//       {FAQS.map((item, idx) => (
-//         <View key={idx} style={styles.card}>
-//           <Text style={styles.question}>{item.q}</Text>
-//           <Text style={styles.answer}>{item.a}</Text>
-//         </View>
-//       ))}
-//     </ScrollView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#f5f6fa', padding: 16 },
-//   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, color: '#2d3436' },
-//   card: { backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 14, elevation: 2 },
-//   question: { fontWeight: 'bold', fontSize: 16, color: '#0984e3', marginBottom: 6 },
-//   answer: { color: '#636e72', fontSize: 15 },
-// }); 
-
-
-
-
 "use client"
 
-import { useState } from "react"
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, StatusBar, Dimensions } from "react-native"
+import { useState, useCallback } from "react"
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+  Dimensions,
+  RefreshControl,
+} from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
+import { useTheme } from "./ThemeContext" // Adjust path as needed
 
 const { width } = Dimensions.get("window")
+const HEADER_HEIGHT = 100 // Approximate height for the fixed header
 
 const FAQS = [
   {
@@ -72,7 +48,9 @@ const FAQS = [
 
 export default function FAQ() {
   const [expandedItems, setExpandedItems] = useState(new Set())
+  const [refreshing, setRefreshing] = useState(false)
   const navigation = useNavigation()
+  const { theme } = useTheme()
 
   const toggleExpanded = (index) => {
     const newExpanded = new Set(expandedItems)
@@ -84,49 +62,86 @@ export default function FAQ() {
     setExpandedItems(newExpanded)
   }
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    // Simulate a network request or data refetch
+    setTimeout(() => {
+      setRefreshing(false)
+      // In a real app, you would refetch your FAQ data here
+    }, 1500)
+  }, [])
+
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
 
-      <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.backgroundGradient} />
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, { backgroundColor: theme.card }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>FAQ</Text>
+        <View style={styles.placeholder} />
+      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>FAQ</Text>
-          <View style={styles.placeholder} />
-        </View>
-
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContainer,
+          { paddingTop: HEADER_HEIGHT + 20 }, // Adjust padding to clear fixed header
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+            progressBackgroundColor={theme.surface}
+          />
+        }
+      >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="help-circle" size={32} color="#E3D095" />
+          <View style={[styles.iconContainer, { backgroundColor: theme.accentBackground }]}>
+            <Ionicons name="help-circle" size={32} color={theme.accent} />
           </View>
-          <Text style={styles.title}>Frequently Asked Questions</Text>
-          <Text style={styles.subtitle}>Find answers to common questions about our platform</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Frequently Asked Questions</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Find answers to common questions about our platform
+          </Text>
         </View>
 
         {/* FAQ Items */}
         <View style={styles.faqContainer}>
           {FAQS.map((item, index) => (
-            <View key={index} style={styles.faqCard}>
+            <View
+              key={index}
+              style={[
+                styles.faqCard,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                  shadowColor: theme.shadow,
+                },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.questionContainer}
                 onPress={() => toggleExpanded(index)}
                 activeOpacity={0.8}
               >
                 <View style={styles.questionContent}>
-                  <Text style={styles.question}>{item.q}</Text>
-                  <Ionicons name={expandedItems.has(index) ? "chevron-up" : "chevron-down"} size={20} color="#7965C1" />
+                  <Text style={[styles.question, { color: theme.text }]}>{item.q}</Text>
+                  <Ionicons
+                    name={expandedItems.has(index) ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color={theme.accent}
+                  />
                 </View>
               </TouchableOpacity>
-
               {expandedItems.has(index) && (
-                <View style={styles.answerContainer}>
-                  <Text style={styles.answer}>{item.a}</Text>
+                <View style={[styles.answerContainer, { borderTopColor: theme.border }]}>
+                  <Text style={[styles.answer, { color: theme.textSecondary }]}>{item.a}</Text>
                 </View>
               )}
             </View>
@@ -135,18 +150,27 @@ export default function FAQ() {
 
         {/* Contact Support */}
         <View style={styles.supportSection}>
-          <View style={styles.supportCard}>
-            <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.supportGradient}>
-              <Ionicons name="chatbubbles" size={24} color="#fff" />
-              <Text style={styles.supportTitle}>Still need help?</Text>
-              <Text style={styles.supportSubtitle}>Our support team is here to assist you</Text>
+          <View
+            style={[
+              styles.supportCard,
+              {
+                shadowColor: theme.shadow,
+              },
+            ]}
+          >
+            <LinearGradient colors={[theme.accent, theme.secondary]} style={styles.supportGradient}>
+              <Ionicons name="chatbubbles" size={24} color={theme.textContrast} />
+              <Text style={[styles.supportTitle, { color: theme.textContrast }]}>Still need help?</Text>
+              <Text style={[styles.supportSubtitle, { color: theme.textContrast }]}>
+                Our support team is here to assist you
+              </Text>
               <TouchableOpacity
-                style={styles.contactButton}
+                style={[styles.contactButton, { backgroundColor: theme.buttonBackground }]}
                 onPress={() => navigation.navigate("SupportCenter")}
                 activeOpacity={0.8}
               >
-                <Text style={styles.contactButtonText}>Contact Support</Text>
-                <Ionicons name="arrow-forward" size={16} color="#7965C1" />
+                <Text style={[styles.contactButtonText, { color: theme.buttonText }]}>Contact Support</Text>
+                <Ionicons name="arrow-forward" size={16} color={theme.buttonText} />
               </TouchableOpacity>
             </LinearGradient>
           </View>
@@ -159,47 +183,56 @@ export default function FAQ() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0E2148",
   },
-  backgroundGradient: {
+  fixedHeader: {
     position: "absolute",
+    top: 0,
     left: 0,
     right: 0,
-    top: 0,
-    bottom: 0,
+    zIndex: 10,
+    height: HEADER_HEIGHT,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingTop: StatusBar.currentHeight || 40, // Dynamic padding for status bar
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)", // Will be themed
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  backButton: {
+    position: "absolute",
+    left: 20,
+    top: StatusBar.currentHeight || 40, // Align with header content
+    paddingVertical: 8,
+    zIndex: 11,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    flex: 1,
+    textAlign: "center",
+  },
+  placeholder: {
+    width: 24, // To balance the back button
   },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingBottom: 32,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 40,
-    marginBottom: 32,
-  },
-  backButton: {
-    paddingVertical: 8,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  placeholder: {
-    width: 40,
-  },
   titleSection: {
     alignItems: "center",
     marginBottom: 32,
+    marginTop: 20, // Additional spacing after fixed header
   },
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(227, 208, 149, 0.2)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -207,13 +240,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
     marginBottom: 8,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
     textAlign: "center",
     lineHeight: 20,
   },
@@ -221,12 +252,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   faqCard: {
-    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   questionContainer: {
     padding: 20,
@@ -239,7 +272,6 @@ const styles = StyleSheet.create({
   question: {
     fontWeight: "bold",
     fontSize: 16,
-    color: "#fff",
     flex: 1,
     marginRight: 12,
   },
@@ -247,10 +279,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.1)",
   },
   answer: {
-    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
     lineHeight: 20,
     marginTop: 12,
@@ -262,7 +292,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     elevation: 8,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -272,20 +301,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   supportTitle: {
-    color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
     marginTop: 12,
     marginBottom: 8,
   },
   supportSubtitle: {
-    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
     textAlign: "center",
     marginBottom: 20,
   },
   contactButton: {
-    backgroundColor: "#E3D095",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 24,
@@ -293,7 +319,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   contactButtonText: {
-    color: "#0E2148",
     fontSize: 16,
     fontWeight: "bold",
     marginRight: 8,
