@@ -1,430 +1,3 @@
-// import { useEffect, useState, useCallback } from "react"
-// import {
-//   View,
-//   Text,
-//   FlatList,
-//   ActivityIndicator,
-//   TouchableOpacity,
-//   StyleSheet,
-//   RefreshControl,
-//   StatusBar,
-//   Dimensions,
-// } from "react-native"
-// import { supabase } from "./supabaseClient"
-// import { LinearGradient } from "expo-linear-gradient"
-// import { Ionicons } from "@expo/vector-icons"
-
-// const { width } = Dimensions.get("window")
-
-// const formatDate = (dateStr) => {
-//   if (!dateStr) return ""
-//   const d = new Date(dateStr)
-//   const now = new Date()
-//   const diffInHours = (now - d) / (1000 * 60 * 60)
-
-//   if (diffInHours < 1) {
-//     const diffInMinutes = Math.floor((now - d) / (1000 * 60))
-//     return diffInMinutes <= 1 ? "Just now" : `${diffInMinutes}m ago`
-//   } else if (diffInHours < 24) {
-//     return `${Math.floor(diffInHours)}h ago`
-//   } else if (diffInHours < 48) {
-//     return "Yesterday"
-//   } else {
-//     return d.toLocaleDateString(undefined, {
-//       month: "short",
-//       day: "numeric",
-//       year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-//     })
-//   }
-// }
-
-// export default function NotificationsScreen({ navigation }) {
-//   const [notifications, setNotifications] = useState([])
-//   const [loading, setLoading] = useState(true)
-//   const [refreshing, setRefreshing] = useState(false)
-//   const [error, setError] = useState("")
-
-//   const fetchNotifications = async () => {
-//     setError("")
-//     try {
-//       const {
-//         data: { user },
-//       } = await supabase.auth.getUser()
-//       if (!user) {
-//         setNotifications([])
-//         setLoading(false)
-//         setRefreshing(false)
-//         return
-//       }
-//       const { data, error } = await supabase
-//         .from("notifications")
-//         .select("*")
-//         .eq("user_id", user.id)
-//         .order("created_at", { ascending: false })
-//       if (error) throw error
-//       setNotifications(data || [])
-//     } catch (err) {
-//       setError("Failed to load notifications.")
-//     }
-//     setLoading(false)
-//     setRefreshing(false)
-//   }
-
-//   useEffect(() => {
-//     setLoading(true)
-//     fetchNotifications()
-//   }, [])
-
-//   const onRefresh = useCallback(() => {
-//     setRefreshing(true)
-//     fetchNotifications()
-//   }, [])
-
-//   const markAllAsRead = async () => {
-//     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id)
-//     if (unreadIds.length > 0) {
-//       await supabase.from("notifications").update({ read: true }).in("id", unreadIds)
-//       fetchNotifications()
-//     }
-//   }
-
-//   const markAsRead = async (notificationId) => {
-//     await supabase.from("notifications").update({ read: true }).eq("id", notificationId)
-//     fetchNotifications()
-//   }
-
-//   const getNotificationIcon = (type) => {
-//     switch (type) {
-//       case "transaction":
-//         return "card"
-//       case "withdrawal":
-//         return "cash"
-//       case "security":
-//         return "shield-checkmark"
-//       case "promotion":
-//         return "gift"
-//       default:
-//         return "notifications"
-//     }
-//   }
-
-//   const getNotificationColor = (type, isRead) => {
-//     if (isRead) return "rgba(255,255,255,0.6)"
-//     switch (type) {
-//       case "transaction":
-//         return "#7965C1"
-//       case "withdrawal":
-//         return "#E3D095"
-//       case "security":
-//         return "#ff6b6b"
-//       case "promotion":
-//         return "#4caf50"
-//       default:
-//         return "#7965C1"
-//     }
-//   }
-
-//   const renderItem = ({ item }) => (
-//     <TouchableOpacity
-//       style={[styles.notificationCard, !item.read && styles.unreadCard]}
-//       onPress={() => !item.read && markAsRead(item.id)}
-//       activeOpacity={0.8}
-//     >
-//       <View style={styles.notificationContent}>
-//         <View style={[styles.notificationIcon, { backgroundColor: `${getNotificationColor(item.type, item.read)}20` }]}>
-//           <Ionicons
-//             name={getNotificationIcon(item.type)}
-//             size={20}
-//             color={getNotificationColor(item.type, item.read)}
-//           />
-//         </View>
-//         <View style={styles.notificationText}>
-//           <Text style={[styles.notificationTitle, !item.read && styles.unreadTitle]}>{item.title}</Text>
-//           <Text style={styles.notificationBody} numberOfLines={2}>
-//             {item.body}
-//           </Text>
-//           <Text style={styles.notificationDate}>{formatDate(item.created_at)}</Text>
-//         </View>
-//         {!item.read && <View style={styles.unreadDot} />}
-//       </View>
-//     </TouchableOpacity>
-//   )
-
-//   const unreadCount = notifications.filter((n) => !n.read).length
-
-//   if (loading) {
-//     return (
-//       <View style={styles.loadingContainer}>
-//         <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
-//         <ActivityIndicator size="large" color="#7965C1" />
-//         <Text style={styles.loadingText}>Loading notifications...</Text>
-//       </View>
-//     )
-//   }
-
-//   return (
-//     <View style={styles.container}>
-//       <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
-
-//       <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.headerGradient}>
-//         {/* Header */}
-//         <View style={styles.header}>
-//           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-//             <Ionicons name="arrow-back" size={24} color="#fff" />
-//           </TouchableOpacity>
-//           <Text style={styles.headerTitle}>Notifications</Text>
-//           {unreadCount > 0 && (
-//             <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-//               <Ionicons name="checkmark-done" size={16} color="#0E2148" />
-//             </TouchableOpacity>
-//           )}
-//         </View>
-
-//         {/* Stats */}
-//         {/* <View style={styles.statsContainer}>
-//           <View style={styles.statItem}>
-//             <Text style={styles.statNumber}>{notifications.length}</Text>
-//             <Text style={styles.statLabel}>Total</Text>
-//           </View>
-//           <View style={styles.statDivider} />
-//           <View style={styles.statItem}>
-//             <Text style={styles.statNumber}>{unreadCount}</Text>
-//             <Text style={styles.statLabel}>Unread</Text>
-//           </View>
-//         </View> */}
-//       </LinearGradient>
-
-//       {error ? (
-//         <View style={styles.errorContainer}>
-//           <Ionicons name="alert-circle" size={48} color="#ff6b6b" />
-//           <Text style={styles.errorText}>{error}</Text>
-//           <TouchableOpacity style={styles.retryButton} onPress={fetchNotifications}>
-//             <Text style={styles.retryButtonText}>Try Again</Text>
-//           </TouchableOpacity>
-//         </View>
-//       ) : notifications.length === 0 ? (
-//         <View style={styles.emptyState}>
-//           <View style={styles.emptyIconContainer}>
-//             <Ionicons name="notifications-off" size={48} color="rgba(255,255,255,0.3)" />
-//           </View>
-//           <Text style={styles.emptyStateTitle}>All caught up!</Text>
-//           <Text style={styles.emptyStateSubtext}>
-//             You don't have any notifications yet. We'll notify you when something important happens.
-//           </Text>
-//         </View>
-//       ) : (
-//         <FlatList
-//           data={notifications}
-//           keyExtractor={(item) => item.id}
-//           renderItem={renderItem}
-//           contentContainerStyle={styles.listContainer}
-//           showsVerticalScrollIndicator={false}
-//           refreshControl={
-//             <RefreshControl
-//               refreshing={refreshing}
-//               onRefresh={onRefresh}
-//               colors={["#7965C1"]}
-//               tintColor="#7965C1"
-//               progressBackgroundColor="#0E2148"
-//             />
-//           }
-//         />
-//       )}
-//     </View>
-//   )
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#0E2148",
-//   },
-//   loadingContainer: {
-//     flex: 1,
-//     backgroundColor: "#0E2148",
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   loadingText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     marginTop: 16,
-//   },
-//   headerGradient: {
-//     paddingBottom: 5,
-//   },
-//   header: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     paddingHorizontal: 20,
-//     paddingTop: 40,
-//     marginBottom: 0,
-//   },
-//   backButton: {
-//     paddingVertical: 8,
-//   },
-//   headerTitle: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//     flex: 1,
-//     textAlign: "center",
-//     marginRight: 40,
-//   },
-//   markAllButton: {
-//     backgroundColor: "#E3D095",
-//     borderRadius: 20,
-//     padding: 8,
-//   },
-//   statsContainer: {
-//     flexDirection: "row",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     paddingHorizontal: 24,
-//   },
-//   statItem: {
-//     alignItems: "center",
-//     flex: 1,
-//   },
-//   statNumber: {
-//     color: "#fff",
-//     fontSize: 24,
-//     fontWeight: "bold",
-//     marginBottom: 4,
-//   },
-//   statLabel: {
-//     color: "rgba(255,255,255,0.8)",
-//     fontSize: 14,
-//   },
-//   statDivider: {
-//     width: 1,
-//     height: 40,
-//     backgroundColor: "rgba(255,255,255,0.2)",
-//     marginHorizontal: 20,
-//   },
-//   listContainer: {
-//     paddingHorizontal: 24,
-//     paddingTop: 24,
-//     paddingBottom: 32,
-//   },
-//   notificationCard: {
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     borderRadius: 16,
-//     marginBottom: 12,
-//     borderWidth: 1,
-//     borderColor: "rgba(255,255,255,0.1)",
-//   },
-//   unreadCard: {
-//     backgroundColor: "rgba(121, 101, 193, 0.1)",
-//     borderColor: "rgba(121, 101, 193, 0.3)",
-//   },
-//   notificationContent: {
-//     flexDirection: "row",
-//     alignItems: "flex-start",
-//     padding: 16,
-//   },
-//   notificationIcon: {
-//     width: 40,
-//     height: 40,
-//     borderRadius: 20,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     marginRight: 12,
-//   },
-//   notificationText: {
-//     flex: 1,
-//   },
-//   notificationTitle: {
-//     color: "rgba(255,255,255,0.9)",
-//     fontSize: 16,
-//     fontWeight: "600",
-//     marginBottom: 4,
-//   },
-//   unreadTitle: {
-//     color: "#fff",
-//     fontWeight: "bold",
-//   },
-//   notificationBody: {
-//     color: "rgba(255,255,255,0.7)",
-//     fontSize: 14,
-//     lineHeight: 20,
-//     marginBottom: 8,
-//   },
-//   notificationDate: {
-//     color: "rgba(255,255,255,0.5)",
-//     fontSize: 12,
-//   },
-//   unreadDot: {
-//     width: 8,
-//     height: 8,
-//     borderRadius: 4,
-//     backgroundColor: "#7965C1",
-//     marginTop: 4,
-//   },
-//   errorContainer: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     paddingHorizontal: 24,
-//   },
-//   errorText: {
-//     color: "#ff6b6b",
-//     fontSize: 16,
-//     textAlign: "center",
-//     marginTop: 16,
-//     marginBottom: 24,
-//   },
-//   retryButton: {
-//     backgroundColor: "#7965C1",
-//     paddingHorizontal: 24,
-//     paddingVertical: 12,
-//     borderRadius: 12,
-//   },
-//   retryButtonText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     fontWeight: "bold",
-//   },
-//   emptyState: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     paddingHorizontal: 24,
-//   },
-//   emptyIconContainer: {
-//     width: 80,
-//     height: 80,
-//     borderRadius: 40,
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     marginBottom: 24,
-//   },
-//   emptyStateTitle: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//     marginBottom: 12,
-//   },
-//   emptyStateSubtext: {
-//     color: "rgba(255,255,255,0.6)",
-//     fontSize: 14,
-//     textAlign: "center",
-//     lineHeight: 20,
-//   },
-// })
-
-
-
-
-
-
-
-
-
-
-"use client"
 import { useEffect, useState, useCallback } from "react"
 import {
   View,
@@ -437,10 +10,12 @@ import {
   StatusBar,
   Dimensions,
   Platform,
+  Alert,
 } from "react-native"
 import { supabase } from "./supabaseClient"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "./ThemeContext"
+import { useFocusEffect } from "@react-navigation/native"
 
 const { width } = Dimensions.get("window")
 const STATUS_BAR_HEIGHT = Platform.OS === "ios" ? 50 : StatusBar.currentHeight
@@ -486,24 +61,36 @@ export default function NotificationsScreen({ navigation }) {
         setRefreshing(false)
         return
       }
+      
+      // Fetch notifications with additional metadata
       const { data, error } = await supabase
         .from("notifications")
-        .select("*")
+        .select(`
+          *,
+          action_data,
+          action_type,
+          related_transaction_id,
+          related_withdrawal_id,
+          related_support_request_id
+        `)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
+      
       if (error) throw error
       setNotifications(data || [])
     } catch (err) {
+      console.error("Error fetching notifications:", err)
       setError("Failed to load notifications.")
     }
     setLoading(false)
     setRefreshing(false)
   }
 
-  useEffect(() => {
-    setLoading(true)
-    fetchNotifications()
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications()
+    }, [])
+  )
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -513,44 +100,190 @@ export default function NotificationsScreen({ navigation }) {
   const markAllAsRead = async () => {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id)
     if (unreadIds.length > 0) {
-      await supabase.from("notifications").update({ read: true }).in("id", unreadIds)
-      fetchNotifications()
+      try {
+        await supabase.from("notifications").update({ read: true }).in("id", unreadIds)
+        fetchNotifications()
+      } catch (error) {
+        console.error("Error marking notifications as read:", error)
+        Alert.alert("Error", "Failed to mark notifications as read.")
+      }
     }
   }
 
   const markAsRead = async (notificationId) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", notificationId)
-    fetchNotifications()
-  }
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case "transaction":
-        return "card"
-      case "withdrawal":
-        return "cash"
-      case "security":
-        return "shield-checkmark"
-      case "promotion":
-        return "gift"
-      default:
-        return "notifications"
+    try {
+      await supabase.from("notifications").update({ read: true }).eq("id", notificationId)
+      fetchNotifications()
+    } catch (error) {
+      console.error("Error marking notification as read:", error)
     }
   }
 
-  const getNotificationColor = (type, isRead) => {
+  const getNotificationIcon = (type, actionType) => {
+    // Determine icon based on notification type and action type
+    switch (actionType) {
+      case "transaction_approved":
+      case "transaction_completed":
+        return "checkmark-circle"
+      case "transaction_rejected":
+        return "close-circle"
+      case "withdrawal_approved":
+      case "withdrawal_completed":
+        return "cash"
+      case "withdrawal_rejected":
+        return "close-circle"
+      case "wallet_funded":
+        return "wallet"
+      case "support_reply":
+        return "chatbubble"
+      case "security_alert":
+        return "shield-checkmark"
+      case "promotion":
+        return "gift"
+      case "system":
+        return "settings"
+      default:
+        // Fallback to type-based icons
+        switch (type) {
+          case "transaction":
+            return "card"
+          case "withdrawal":
+            return "cash"
+          case "security":
+            return "shield-checkmark"
+          case "promotion":
+            return "gift"
+          case "support":
+            return "chatbubble"
+          default:
+            return "notifications"
+        }
+    }
+  }
+
+  const getNotificationColor = (type, actionType, isRead) => {
     if (isRead) return theme.textSecondary // Read notifications are less prominent
-    switch (type) {
-      case "transaction":
-        return theme.accent
-      case "withdrawal":
-        return theme.warning
-      case "security":
+    
+    switch (actionType) {
+      case "transaction_approved":
+      case "transaction_completed":
+      case "withdrawal_approved":
+      case "withdrawal_completed":
+      case "wallet_funded":
+        return theme.success
+      case "transaction_rejected":
+      case "withdrawal_rejected":
         return theme.error
+      case "support_reply":
+        return theme.accent
+      case "security_alert":
+        return theme.warning
       case "promotion":
         return theme.success
+      case "system":
+        return theme.textSecondary
       default:
-        return theme.accent
+        // Fallback to type-based colors
+        switch (type) {
+          case "transaction":
+            return theme.accent
+          case "withdrawal":
+            return theme.warning
+          case "security":
+            return theme.error
+          case "promotion":
+            return theme.success
+          case "support":
+            return theme.accent
+          default:
+            return theme.accent
+        }
+    }
+  }
+
+  const handleNotificationPress = async (notification) => {
+    // Mark as read first
+    if (!notification.read) {
+      await markAsRead(notification.id)
+    }
+
+    // Navigate based on action type and related data
+    try {
+      switch (notification.action_type) {
+        case "transaction_approved":
+        case "transaction_completed":
+        case "transaction_rejected":
+          if (notification.related_transaction_id) {
+            // Navigate to transaction details
+            navigation.navigate("TransactionDetails", { 
+              transactionId: notification.related_transaction_id 
+            })
+          } else {
+            // Navigate to transactions list
+            navigation.navigate("Main", { screen: "Transactions" })
+          }
+          break
+
+        case "withdrawal_approved":
+        case "withdrawal_completed":
+        case "withdrawal_rejected":
+          if (notification.related_withdrawal_id) {
+            // Navigate to withdrawal details (if you have a withdrawal details screen)
+            navigation.navigate("Main", { screen: "Transactions" })
+          } else {
+            // Navigate to transactions list
+            navigation.navigate("Main", { screen: "Transactions" })
+          }
+          break
+
+        case "wallet_funded":
+          // Navigate to wallet screen
+          navigation.navigate("Wallet")
+          break
+
+        case "support_reply":
+          if (notification.related_support_request_id) {
+            // Navigate to support center with specific chat
+            navigation.navigate("SupportCenter", { 
+              chatId: notification.related_support_request_id 
+            })
+          } else {
+            // Navigate to support center
+            navigation.navigate("Main", { screen: "Support" })
+          }
+          break
+
+        case "security_alert":
+          // Navigate to profile for security settings
+          navigation.navigate("Main", { screen: "Profile" })
+          break
+
+        case "promotion":
+          // Navigate to rates or promotions screen
+          navigation.navigate("Main", { screen: "Rates" })
+          break
+
+        case "system":
+          // Stay on current screen for system notifications
+          break
+
+        default:
+          // For notifications without specific action type, try to determine from content
+          if (notification.body?.toLowerCase().includes("transaction")) {
+            navigation.navigate("Main", { screen: "Transactions" })
+          } else if (notification.body?.toLowerCase().includes("withdrawal")) {
+            navigation.navigate("Main", { screen: "Transactions" })
+          } else if (notification.body?.toLowerCase().includes("wallet")) {
+            navigation.navigate("Wallet")
+          } else if (notification.body?.toLowerCase().includes("support")) {
+            navigation.navigate("Main", { screen: "Support" })
+          }
+          break
+      }
+    } catch (error) {
+      console.error("Navigation error:", error)
+      // Fallback to transactions screen
+      navigation.navigate("Main", { screen: "Transactions" })
     }
   }
 
@@ -561,25 +294,34 @@ export default function NotificationsScreen({ navigation }) {
         { backgroundColor: theme.card, borderColor: theme.border },
         !item.read && { backgroundColor: theme.accentBackground, borderColor: theme.accent },
       ]}
-      onPress={() => !item.read && markAsRead(item.id)}
+      onPress={() => handleNotificationPress(item)}
       activeOpacity={0.8}
     >
       <View style={styles.notificationContent}>
-        <View style={[styles.notificationIcon, { backgroundColor: `${getNotificationColor(item.type, item.read)}20` }]}>
+        <View style={[
+          styles.notificationIcon, 
+          { backgroundColor: `${getNotificationColor(item.type, item.action_type, item.read)}20` }
+        ]}>
           <Ionicons
-            name={getNotificationIcon(item.type)}
+            name={getNotificationIcon(item.type, item.action_type)}
             size={20}
-            color={getNotificationColor(item.type, item.read)}
+            color={getNotificationColor(item.type, item.action_type, item.read)}
           />
         </View>
         <View style={styles.notificationText}>
-          <Text style={[styles.notificationTitle, { color: theme.text }, !item.read && { color: theme.text }]}>
+          <Text style={[
+            styles.notificationTitle, 
+            { color: theme.text }, 
+            !item.read && { fontWeight: "600" }
+          ]}>
             {item.title}
           </Text>
           <Text style={[styles.notificationBody, { color: theme.textSecondary }]} numberOfLines={2}>
             {item.body}
           </Text>
-          <Text style={[styles.notificationDate, { color: theme.textMuted }]}>{formatDate(item.created_at)}</Text>
+          <Text style={[styles.notificationDate, { color: theme.textMuted }]}>
+            {formatDate(item.created_at)}
+          </Text>
         </View>
         {!item.read && <View style={[styles.unreadDot, { backgroundColor: theme.accent }]} />}
       </View>
@@ -604,26 +346,55 @@ export default function NotificationsScreen({ navigation }) {
 
       {/* Fixed Header */}
       <View
-        style={[
-          styles.fixedHeader,
-          { backgroundColor: theme.primary, borderBottomColor: theme.border, shadowColor: theme.shadow },
-        ]}
+        style={{
+          // backgroundColor: theme.primary,
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 5,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          // elevation: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.textContrast} />
+        <TouchableOpacity
+          style={{
+            marginLeft: 0,
+            padding: 6,
+            borderRadius: 6,
+          }}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.textContrast }]}>Notifications</Text>
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold' }}>Notifications</Text>
         {unreadCount > 0 ? (
-          <TouchableOpacity style={[styles.markAllButton, { backgroundColor: theme.accent }]} onPress={markAllAsRead}>
+          <TouchableOpacity 
+            style={{
+              marginRight: 0,
+              padding: 6,
+              borderRadius: 6,
+              backgroundColor: theme.accent,
+            }}
+            onPress={markAllAsRead}
+          >
             <Ionicons name="checkmark-done" size={16} color={theme.textContrast} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.placeholder} /> // Placeholder to keep title centered
+          <View style={{ width: 32, height: 32 }} />
         )}
       </View>
 
       {error ? (
-        <View style={[styles.errorContainer, { paddingTop: HEADER_HEIGHT + 20 }]}>
+        <View style={[styles.errorContainer, { paddingTop: 50 }]}>
           <Ionicons name="alert-circle" size={48} color={theme.error} />
           <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
           <TouchableOpacity
@@ -634,7 +405,7 @@ export default function NotificationsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       ) : notifications.length === 0 ? (
-        <View style={[styles.emptyState, { paddingTop: HEADER_HEIGHT + 20 }]}>
+        <View style={[styles.emptyState, { paddingTop: 50 }]}>
           <View style={[styles.emptyIconContainer, { backgroundColor: theme.surface }]}>
             <Ionicons name="notifications-off" size={48} color={theme.textSecondary} />
           </View>
@@ -648,7 +419,7 @@ export default function NotificationsScreen({ navigation }) {
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.listContainer, { paddingTop: HEADER_HEIGHT + 20 }]}
+          contentContainerStyle={[styles.listContainer, { paddingTop: 120 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -678,47 +449,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
   },
-  fixedHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    height: HEADER_HEIGHT,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: STATUS_BAR_HEIGHT,
-    borderBottomWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  backButton: {
-    paddingVertical: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    flex: 1,
-    textAlign: "center",
-  },
-  placeholder: {
-    width: 24, // Adjusted for better centering with back button
-  },
-  markAllButton: {
-    borderRadius: 20,
-    padding: 8,
-  },
+
   listContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
+    marginTop: -110,
     paddingBottom: 32,
   },
   notificationCard: {
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 1,
   },
   notificationContent: {

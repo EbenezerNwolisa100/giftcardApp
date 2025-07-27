@@ -1,1330 +1,824 @@
-// "use client"
-
-// import { useEffect, useState, useCallback } from "react"
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   TouchableOpacity,
-//   ActivityIndicator,
-//   StatusBar,
-//   Dimensions,
-//   TextInput,
-//   FlatList,
-//   RefreshControl,
-// } from "react-native"
-// import { supabase } from "./supabaseClient"
-// import { useNavigation } from "@react-navigation/native"
-// import { LinearGradient } from "expo-linear-gradient"
-// import { Ionicons } from "@expo/vector-icons"
-// import Modal from "react-native-modal"
-
-// const { width } = Dimensions.get("window")
-
-// export default function HottestRatesScreen() {
-//   const navigation = useNavigation()
-
-//   // Data states
-//   const [allSellBrands, setAllSellBrands] = useState([])
-//   const [allBuyBrands, setAllBuyBrands] = useState([]) // Stores giftcards_buy_brands
-//   const [buyInventoryVariants, setBuyInventoryVariants] = useState({}) // Stores grouped giftcards_buy items by brand
-
-//   // UI states
-//   const [loading, setLoading] = useState(true)
-//   const [refreshing, setRefreshing] = useState(false)
-//   const [activeTab, setActiveTab] = useState("sell") // 'sell' or 'buy'
-
-//   // Calculator states
-//   const [selectedSellBrand, setSelectedSellBrand] = useState(null)
-//   const [selectedSellVariant, setSelectedSellVariant] = useState(null)
-//   const [selectedBuyBrand, setSelectedBuyBrand] = useState(null)
-//   const [selectedBuyVariant, setSelectedBuyVariant] = useState(null) // Represents a unique variant_name/value/rate combo
-//   const [calculatorAmount, setCalculatorAmount] = useState("")
-//   const [calculatedNaira, setCalculatedNaira] = useState("0.00")
-
-//   // Picker Modal states
-//   const [isPickerVisible, setIsPickerVisible] = useState(false)
-//   const [pickerData, setPickerData] = useState([])
-//   const [pickerType, setPickerType] = useState("") // 'brand' or 'variant'
-
-//   const fetchData = useCallback(async () => {
-//     setLoading(true)
-//     setRefreshing(true)
-//     try {
-//       // Fetch all sell brands with their variants
-//       const { data: sellBrandsData, error: sellBrandsError } = await supabase.from("giftcards_sell").select(
-//         `
-//           id, name, image_url,
-//           giftcards_sell_variants(id, name, sell_rate)
-//         `,
-//       )
-//       if (sellBrandsError) throw sellBrandsError
-//       setAllSellBrands(sellBrandsData || [])
-
-//       // Fetch all buy brands
-//       const { data: buyBrandsData, error: buyBrandsError } = await supabase
-//         .from("giftcards_buy_brands")
-//         .select(`id, name, image_url`)
-//         .order("name")
-//       if (buyBrandsError) throw buyBrandsError
-
-//       // Fetch all available buy inventory items and group them by brand and variant
-//       const { data: inventoryData, error: inventoryError } = await supabase
-//         .from("giftcards_buy")
-//         .select(`id, code, variant_name, value, rate, buy_brand_id`)
-//         .eq("sold", false)
-//         .is("assigned_to", null)
-
-//       if (inventoryError) throw inventoryError
-
-//       const groupedBuyVariants = {}
-//       ;(inventoryData || []).forEach((item) => {
-//         if (!groupedBuyVariants[item.buy_brand_id]) {
-//           groupedBuyVariants[item.buy_brand_id] = {}
-//         }
-//         const variantKey = `${item.variant_name}_${item.value}_${item.rate}`
-//         if (!groupedBuyVariants[item.buy_brand_id][variantKey]) {
-//           groupedBuyVariants[item.buy_brand_id][variantKey] = {
-//             name: item.variant_name,
-//             value: item.value,
-//             rate: item.rate,
-//             available_count: 0,
-//             items: [], // Store actual items to pass to form if needed
-//           }
-//         }
-//         groupedBuyVariants[item.buy_brand_id][variantKey].available_count++
-//         groupedBuyVariants[item.buy_brand_id][variantKey].items.push(item)
-//       })
-//       setBuyInventoryVariants(groupedBuyVariants)
-
-//       // Filter buy brands to only include those that have available inventory
-//       const filteredBuyBrands = (buyBrandsData || []).filter((brand) => {
-//         return Object.keys(groupedBuyVariants[brand.id] || {}).length > 0
-//       })
-//       setAllBuyBrands(filteredBuyBrands)
-//     } catch (error) {
-//       console.error("Error fetching data:", error)
-//     } finally {
-//       setLoading(false)
-//       setRefreshing(false)
-//     }
-//   }, [])
-
-//   useEffect(() => {
-//     fetchData()
-//   }, [fetchData])
-
-//   // Reset calculator and selected items when tab changes
-//   useEffect(() => {
-//     setSelectedSellBrand(null)
-//     setSelectedSellVariant(null)
-//     setSelectedBuyBrand(null)
-//     setSelectedBuyVariant(null)
-//     setCalculatorAmount("")
-//     setCalculatedNaira("0.00")
-//   }, [activeTab])
-
-//   // Calculate payout whenever relevant states change
-//   useEffect(() => {
-//     const amount = Number.parseFloat(calculatorAmount)
-//     if (isNaN(amount) || amount <= 0) {
-//       setCalculatedNaira("0.00")
-//       return
-//     }
-
-//     let rate = 0
-//     if (activeTab === "sell" && selectedSellVariant) {
-//       rate = selectedSellVariant.sell_rate
-//       setCalculatedNaira(
-//         (amount * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-//       )
-//     } else if (activeTab === "buy" && selectedBuyVariant) {
-//       // For buy, the calculation is value * rate * quantity (quantity is 1 for single item)
-//       // Here, we're calculating total cost for the entered USD amount, so it's amount * rate
-//       rate = selectedBuyVariant.rate
-//       setCalculatedNaira(
-//         (amount * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-//       )
-//     } else {
-//       setCalculatedNaira("0.00")
-//     }
-//   }, [calculatorAmount, selectedSellVariant, selectedBuyVariant, activeTab])
-
-//   const openBrandPicker = () => {
-//     setPickerType("brand")
-//     if (activeTab === "sell") {
-//       setPickerData(allSellBrands)
-//     } else {
-//       // On buy tab, allBuyBrands is already filtered in fetchData
-//       setPickerData(allBuyBrands)
-//     }
-//     setIsPickerVisible(true)
-//   }
-
-//   const openVariantPicker = () => {
-//     setPickerType("variant")
-//     if (activeTab === "sell" && selectedSellBrand) {
-//       setPickerData(selectedSellBrand.giftcards_sell_variants || [])
-//     } else if (activeTab === "buy" && selectedBuyBrand) {
-//       const variantsForBrand = buyInventoryVariants[selectedBuyBrand.id] || {}
-//       setPickerData(Object.values(variantsForBrand))
-//     } else {
-//       setPickerData([])
-//     }
-//     setIsPickerVisible(true)
-//   }
-
-//   const handlePickerSelect = (item) => {
-//     if (pickerType === "brand") {
-//       if (activeTab === "sell") {
-//         setSelectedSellBrand(item)
-//         setSelectedSellVariant(null) // Reset variant when brand changes
-//       } else {
-//         setSelectedBuyBrand(item)
-//         setSelectedBuyVariant(null) // Reset variant when brand changes
-//       }
-//     } else if (pickerType === "variant") {
-//       if (activeTab === "sell") {
-//         setSelectedSellVariant(item)
-//       } else {
-//         setSelectedBuyVariant(item)
-//       }
-//     }
-//     setIsPickerVisible(false)
-//   }
-
-//   const renderHeader = () => (
-//     <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.headerGradient}>
-//       <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
-//       <View style={styles.header}>
-//         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-//           <Ionicons name="arrow-back" size={24} color="#fff" />
-//         </TouchableOpacity>
-//         <Text style={styles.headerTitle}>Rate Calculator</Text>
-//         <View style={{ width: 32 }} /> {/* Placeholder for right side to keep title centered */}
-//       </View>
-//       <Text style={styles.headerSubtitle}>Calculate your gift card exchange value instantly</Text>
-//     </LinearGradient>
-//   )
-
-//   const renderPickerItem = ({ item }) => (
-//     <TouchableOpacity style={styles.pickerItem} onPress={() => handlePickerSelect(item)}>
-//       <Text style={styles.pickerItemText}>
-//         {pickerType === "brand"
-//           ? item.name
-//           : activeTab === "sell"
-//             ? item.name
-//             : `${item.name} ($${item.value} @ ₦${item.rate})`}
-//       </Text>
-//     </TouchableOpacity>
-//   )
-
-//   if (loading) {
-//     return (
-//       <View style={styles.loadingContainer}>
-//         <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
-//         <ActivityIndicator size="large" color="#7965C1" />
-//         <Text style={styles.loadingText}>Loading data...</Text>
-//       </View>
-//     )
-//   }
-
-//   return (
-//     <View style={styles.container}>
-//       {renderHeader()}
-
-//       <View style={styles.tabContainer}>
-//         <TouchableOpacity
-//           style={[styles.tab, activeTab === "sell" && styles.activeTab]}
-//           onPress={() => setActiveTab("sell")}
-//         >
-//           <Ionicons name="trending-down" size={16} color={activeTab === "sell" ? "#fff" : "rgba(255,255,255,0.8)"} />
-//           <Text style={[styles.tabText, activeTab === "sell" && styles.activeTabText]}>Sell Cards</Text>
-//         </TouchableOpacity>
-//         <TouchableOpacity
-//           style={[styles.tab, activeTab === "buy" && styles.activeTab]}
-//           onPress={() => setActiveTab("buy")}
-//         >
-//           <Ionicons name="trending-up" size={16} color={activeTab === "buy" ? "#fff" : "rgba(255,255,255,0.8)"} />
-//           <Text style={[styles.tabText, activeTab === "buy" && styles.activeTabText]}>Buy Cards</Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       <RefreshControl refreshing={refreshing} onRefresh={fetchData} tintColor="#7965C1" />
-
-//       <View style={styles.calculatorContainer}>
-//         <Text style={styles.sectionTitle}>{activeTab === "sell" ? "Sell Card Calculator" : "Buy Card Calculator"}</Text>
-
-//         {/* Brand Selector */}
-//         <View style={styles.inputGroup}>
-//           <Text style={styles.inputLabel}>Select Brand</Text>
-//           <TouchableOpacity style={styles.dropdownButton} onPress={openBrandPicker}>
-//             <Text style={styles.dropdownButtonText}>
-//               {activeTab === "sell"
-//                 ? selectedSellBrand?.name || "Choose a brand"
-//                 : selectedBuyBrand?.name || "Choose a brand"}
-//             </Text>
-//             <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.6)" />
-//           </TouchableOpacity>
-//         </View>
-
-//         {/* Variant Selector */}
-//         <View style={styles.inputGroup}>
-//           <Text style={styles.inputLabel}>Select Variant</Text>
-//           <TouchableOpacity
-//             style={[styles.dropdownButton, !(selectedSellBrand || selectedBuyBrand) && styles.dropdownButtonDisabled]}
-//             onPress={openVariantPicker}
-//             disabled={!(selectedSellBrand || selectedBuyBrand)}
-//           >
-//             <Text style={styles.dropdownButtonText}>
-//               {activeTab === "sell"
-//                 ? selectedSellVariant?.name || "Choose a variant"
-//                 : selectedBuyVariant
-//                   ? `${selectedBuyVariant.name} ($${selectedBuyVariant.value})`
-//                   : "Choose a variant"}
-//             </Text>
-//             <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.6)" />
-//           </TouchableOpacity>
-//         </View>
-
-//         {/* Amount Input */}
-//         <View style={styles.inputGroup}>
-//           <Text style={styles.inputLabel}>Amount (USD)</Text>
-//           <TextInput
-//             style={styles.textInput}
-//             placeholder="Enter amount in USD"
-//             placeholderTextColor="rgba(255,255,255,0.6)"
-//             keyboardType="numeric"
-//             value={calculatorAmount}
-//             onChangeText={setCalculatorAmount}
-//             editable={!!(selectedSellVariant || selectedBuyVariant)}
-//           />
-//         </View>
-
-//         {/* Calculated Payout */}
-//         <View style={styles.payoutContainer}>
-//           <Text style={styles.payoutLabel}>You'll {activeTab === "sell" ? "Receive" : "Pay"}:</Text>
-//           <Text style={styles.payoutValue}>₦{calculatedNaira}</Text>
-//         </View>
-
-//         {/* Clear Button */}
-//         <TouchableOpacity
-//           style={styles.clearButton}
-//           onPress={() => {
-//             setSelectedSellBrand(null)
-//             setSelectedSellVariant(null)
-//             setSelectedBuyBrand(null)
-//             setSelectedBuyVariant(null)
-//             setCalculatorAmount("")
-//             setCalculatedNaira("0.00")
-//           }}
-//         >
-//           <Ionicons name="refresh-circle-outline" size={20} color="#fff" />
-//           <Text style={styles.clearButtonText}>Clear Calculator</Text>
-//         </TouchableOpacity>
-
-//         {/* Proceed Button (Optional, if user wants to go to form after calculation) */}
-//         {(selectedSellVariant || selectedBuyVariant) && Number.parseFloat(calculatorAmount) > 0 && (
-//           <TouchableOpacity
-//             style={styles.proceedButton}
-//             onPress={() => {
-//               if (activeTab === "sell") {
-//                 navigation.navigate("SellGiftcardForm", {
-//                   brand: {
-//                     ...selectedSellBrand,
-//                     selectedVariant: selectedSellVariant,
-//                     sell_rate: selectedSellVariant.sell_rate,
-//                   },
-//                 })
-//               } else {
-//                 // For buy, we need to find an actual inventory item to pass to BuyGiftcardForm
-//                 // This assumes we're buying one card of the selected variant/value/rate
-//                 const availableItems =
-//                   buyInventoryVariants[selectedBuyBrand.id]?.[
-//                     `${selectedBuyVariant.name}_${selectedBuyVariant.value}_${selectedBuyVariant.rate}`
-//                   ]?.items || []
-//                 if (availableItems.length > 0) {
-//                   navigation.navigate("BuyGiftcardForm", {
-//                     brand: selectedBuyBrand,
-//                     variant: selectedBuyVariant,
-//                     quantity: 1, // Assuming buying one for now from calculator
-//                   })
-//                 } else {
-//                   alert("No available cards for this variant.")
-//                 }
-//               }
-//             }}
-//           >
-//             <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.proceedButtonGradient}>
-//               <Text style={styles.proceedButtonText}>Proceed to {activeTab === "sell" ? "Sell" : "Buy"}</Text>
-//               <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
-//             </LinearGradient>
-//           </TouchableOpacity>
-//         )}
-//       </View>
-
-//       {/* Picker Modal */}
-//       <Modal isVisible={isPickerVisible} onBackdropPress={() => setIsPickerVisible(false)}>
-//         <View style={styles.modalContent}>
-//           <Text style={styles.modalTitle}>Select {pickerType === "brand" ? "Brand" : "Variant"}</Text>
-//           <FlatList
-//             data={pickerData}
-//             keyExtractor={(item, index) => item.id || `${item.name}-${item.value}-${item.rate}-${index}`}
-//             renderItem={renderPickerItem}
-//             ListEmptyComponent={
-//               <View style={styles.emptyState}>
-//                 <Text style={styles.emptyStateText}>No {pickerType}s available</Text>
-//               </View>
-//             }
-//           />
-//           <TouchableOpacity style={styles.modalCloseButton} onPress={() => setIsPickerVisible(false)}>
-//             <Text style={styles.modalCloseButtonText}>Cancel</Text>
-//           </TouchableOpacity>
-//         </View>
-//       </Modal>
-//     </View>
-//   )
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#0E2148",
-//   },
-//   loadingContainer: {
-//     flex: 1,
-//     backgroundColor: "#0E2148",
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   loadingText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     marginTop: 16,
-//   },
-//   headerGradient: {
-//     paddingBottom: 24,
-//   },
-//   header: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingTop: 40,
-//     paddingBottom: 16,
-//     paddingHorizontal: 20,
-//   },
-//   backButton: {
-//     paddingVertical: 8,
-//   },
-//   headerTitle: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//     flex: 1,
-//     textAlign: "center",
-//   },
-//   headerSubtitle: {
-//     color: "rgba(255,255,255,0.8)",
-//     fontSize: 14,
-//     textAlign: "center",
-//     paddingHorizontal: 20,
-//     marginBottom: 24,
-//   },
-//   tabContainer: {
-//     flexDirection: "row",
-//     paddingHorizontal: 24,
-//     marginTop: 16,
-//     marginBottom: 24,
-//     gap: 8,
-//   },
-//   tab: {
-//     flex: 1,
-//     paddingVertical: 12,
-//     paddingHorizontal: 16,
-//     borderRadius: 12,
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     alignItems: "center",
-//     borderWidth: 1,
-//     borderColor: "rgba(255,255,255,0.2)",
-//     flexDirection: "row",
-//     justifyContent: "center",
-//     gap: 6,
-//   },
-//   activeTab: {
-//     backgroundColor: "#7965C1",
-//     borderColor: "#7965C1",
-//     shadowColor: "#7965C1",
-//     shadowOffset: { width: 0, height: 4 },
-//     shadowOpacity: 0.3,
-//     shadowRadius: 8,
-//     elevation: 8,
-//   },
-//   tabText: {
-//     color: "rgba(255,255,255,0.8)",
-//     fontSize: 14,
-//     fontWeight: "600",
-//   },
-//   activeTabText: {
-//     color: "#fff",
-//     fontWeight: "bold",
-//   },
-//   calculatorContainer: {
-//     flex: 1,
-//     paddingHorizontal: 24,
-//     paddingBottom: 32,
-//   },
-//   sectionTitle: {
-//     color: "#fff",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//     marginBottom: 20,
-//     textAlign: "center",
-//   },
-//   inputGroup: {
-//     marginBottom: 20,
-//   },
-//   inputLabel: {
-//     color: "#fff",
-//     fontSize: 16,
-//     fontWeight: "600",
-//     marginBottom: 8,
-//   },
-//   dropdownButton: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     borderRadius: 16,
-//     paddingHorizontal: 16,
-//     paddingVertical: 16,
-//     borderWidth: 1,
-//     borderColor: "rgba(255,255,255,0.2)",
-//   },
-//   dropdownButtonDisabled: {
-//     opacity: 0.6,
-//   },
-//   dropdownButtonText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     flex: 1,
-//   },
-//   textInput: {
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     borderRadius: 16,
-//     paddingHorizontal: 16,
-//     paddingVertical: 16,
-//     color: "#fff",
-//     fontSize: 16,
-//     borderWidth: 1,
-//     borderColor: "rgba(255,255,255,0.2)",
-//   },
-//   payoutContainer: {
-//     backgroundColor: "rgba(227, 208, 149, 0.1)",
-//     borderRadius: 16,
-//     padding: 20,
-//     marginTop: 20,
-//     marginBottom: 20,
-//     borderWidth: 1,
-//     borderColor: "rgba(227, 208, 149, 0.3)",
-//     alignItems: "center",
-//   },
-//   payoutLabel: {
-//     color: "rgba(255,255,255,0.8)",
-//     fontSize: 16,
-//     marginBottom: 8,
-//   },
-//   payoutValue: {
-//     color: "#E3D095",
-//     fontSize: 28,
-//     fontWeight: "bold",
-//   },
-//   clearButton: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingVertical: 12,
-//     borderRadius: 12,
-//     borderWidth: 1,
-//     borderColor: "rgba(255,255,255,0.3)",
-//     marginBottom: 20,
-//     gap: 8,
-//   },
-//   clearButtonText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     fontWeight: "600",
-//   },
-//   proceedButton: {
-//     borderRadius: 16,
-//     overflow: "hidden",
-//     elevation: 8,
-//     shadowColor: "#7965C1",
-//     shadowOffset: { width: 0, height: 4 },
-//     shadowOpacity: 0.3,
-//     shadowRadius: 8,
-//   },
-//   proceedButtonGradient: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingVertical: 18,
-//     paddingHorizontal: 32,
-//   },
-//   proceedButtonText: {
-//     color: "#fff",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//     marginRight: 8,
-//   },
-//   buttonIcon: {
-//     marginLeft: 4,
-//   },
-//   modalContent: {
-//     backgroundColor: "#0E2148",
-//     borderRadius: 20,
-//     padding: 20,
-//     maxHeight: Dimensions.get("window").height * 0.7,
-//   },
-//   modalTitle: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//     marginBottom: 20,
-//     textAlign: "center",
-//   },
-//   pickerItem: {
-//     paddingVertical: 15,
-//     paddingHorizontal: 10,
-//     borderBottomWidth: 1,
-//     borderBottomColor: "rgba(255,255,255,0.1)",
-//   },
-//   pickerItemText: {
-//     color: "#fff",
-//     fontSize: 16,
-//   },
-//   modalCloseButton: {
-//     marginTop: 20,
-//     paddingVertical: 15,
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     borderRadius: 12,
-//     alignItems: "center",
-//   },
-//   modalCloseButtonText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     fontWeight: "bold",
-//   },
-//   emptyState: {
-//     alignItems: "center",
-//     paddingVertical: 40,
-//   },
-//   emptyStateText: {
-//     color: "rgba(255,255,255,0.6)",
-//     fontSize: 16,
-//   },
-// })
-
-
-
-
-
-
-
-
-"use client"
-
 import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
   Dimensions,
-  TextInput,
-  FlatList,
+  Image,
   RefreshControl,
-  ScrollView, // Use ScrollView for the main content
+  Platform,
+  TextInput,
+  Alert,
 } from "react-native"
-import { supabase } from "./supabaseClient" // Adjust path as needed
-import { useNavigation } from "@react-navigation/native"
-import { LinearGradient } from "expo-linear-gradient"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
-import Modal from "react-native-modal"
-import { useTheme } from "./ThemeContext" // Adjust path as needed
+import { supabase } from "./supabaseClient"
+import { useTheme } from "./ThemeContext"
 
-const { width } = Dimensions.get("window")
-const HEADER_HEIGHT = 100 // Approximate height for the fixed header
+const { width, height } = Dimensions.get("window")
 
-export default function HottestRatesScreen() {
-  const navigation = useNavigation()
-  const { theme } = useTheme()
-
-  // Data states
-  const [allSellBrands, setAllSellBrands] = useState([])
-  const [allBuyBrands, setAllBuyBrands] = useState([]) // Stores giftcards_buy_brands
-  const [buyInventoryVariants, setBuyInventoryVariants] = useState({}) // Stores grouped giftcards_buy items by brand
-
-  // UI states
+export default function HottestRatesScreen({ navigation }) {
+  const { theme, isDarkTheme } = useTheme()
+  const [rates, setRates] = useState([])
+  const [filteredRates, setFilteredRates] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [activeTab, setActiveTab] = useState("sell") // 'sell' or 'buy'
+  const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState("all") // all, buy, sell
+  const [sortBy, setSortBy] = useState("rate") // rate, name, popularity
+  const [unreadCount, setUnreadCount] = useState(0)
 
-  // Calculator states
-  const [selectedSellBrand, setSelectedSellBrand] = useState(null)
-  const [selectedSellVariant, setSelectedSellVariant] = useState(null)
-  const [selectedBuyBrand, setSelectedBuyBrand] = useState(null)
-  const [selectedBuyVariant, setSelectedBuyVariant] = useState(null) // Represents a unique variant_name/value/rate combo
-  const [calculatorAmount, setCalculatorAmount] = useState("")
-  const [calculatedNaira, setCalculatedNaira] = useState("0.00")
-
-  // Picker Modal states
-  const [isPickerVisible, setIsPickerVisible] = useState(false)
-  const [pickerData, setPickerData] = useState([])
-  const [pickerType, setPickerType] = useState("") // 'brand' or 'variant'
-
-  const fetchData = useCallback(async () => {
+  const fetchRates = useCallback(async () => {
     setLoading(true)
     setRefreshing(true)
     try {
-      // Fetch all sell brands with their variants
-      const { data: sellBrandsData, error: sellBrandsError } = await supabase.from("giftcards_sell").select(
-        `
-          id, name, image_url,
-          giftcards_sell_variants(id, name, sell_rate)
-        `,
-      )
-      if (sellBrandsError) throw sellBrandsError
-      setAllSellBrands(sellBrandsData || [])
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
 
-      // Fetch all buy brands
-      const { data: buyBrandsData, error: buyBrandsError } = await supabase
-        .from("giftcards_buy_brands")
-        .select(`id, name, image_url`)
-        .order("name")
-      if (buyBrandsError) throw buyBrandsError
+      // Fetch unread notifications count
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false)
+      setUnreadCount(count || 0)
 
-      // Fetch all available buy inventory items and group them by brand and variant
-      const { data: inventoryData, error: inventoryError } = await supabase
+      // Fetch buy rates from giftcards_buy with brand info
+      const { data: buyRates, error: buyError } = await supabase
         .from("giftcards_buy")
-        .select(`id, code, variant_name, value, rate, buy_brand_id`)
+        .select(`
+          id,
+          buy_rate,
+          rate,
+          value,
+          variant_name,
+          sold,
+          assigned_to,
+          buy_brand_id,
+          buy_brands:buy_brand_id (
+            name,
+            image_url,
+            category_id
+          )
+        `)
         .eq("sold", false)
         .is("assigned_to", null)
-      if (inventoryError) throw inventoryError
 
-      const groupedBuyVariants = {}
-      ;(inventoryData || []).forEach((item) => {
-        if (!groupedBuyVariants[item.buy_brand_id]) {
-          groupedBuyVariants[item.buy_brand_id] = {}
-        }
-        const variantKey = `${item.variant_name}_${item.value}_${item.rate}`
-        if (!groupedBuyVariants[item.buy_brand_id][variantKey]) {
-          groupedBuyVariants[item.buy_brand_id][variantKey] = {
-            name: item.variant_name,
-            value: item.value,
-            rate: item.rate,
-            available_count: 0,
-            items: [], // Store actual items to pass to form if needed
-          }
-        }
-        groupedBuyVariants[item.buy_brand_id][variantKey].available_count++
-        groupedBuyVariants[item.buy_brand_id][variantKey].items.push(item)
-      })
-      setBuyInventoryVariants(groupedBuyVariants)
+      // Fetch sell rates from giftcards_sell_variants with brand info
+      const { data: sellRates, error: sellError } = await supabase
+        .from("giftcards_sell_variants")
+        .select(`
+          id,
+          name,
+          sell_rate,
+          brand_id,
+          giftcards_sell:brand_id (
+            name,
+            image_url,
+            category_id
+          )
+        `)
 
-      // Filter buy brands to only include those that have available inventory
-      const filteredBuyBrands = (buyBrandsData || []).filter((brand) => {
-        return Object.keys(groupedBuyVariants[brand.id] || {}).length > 0
-      })
-      setAllBuyBrands(filteredBuyBrands)
+      if (buyError || sellError) {
+        console.error("Error fetching rates:", buyError || sellError)
+        Alert.alert("Error", "Failed to load rates")
+        return
+      }
+
+      // Process buy rates
+      const processedBuyRates = (buyRates || []).map(item => ({
+        id: `buy-${item.id}`,
+        type: "buy",
+        brandName: item.buy_brands?.name || "Unknown Brand",
+        brandImage: item.buy_brands?.image_url,
+        variantName: item.variant_name,
+        rate: item.rate || item.buy_rate || 0,
+        value: item.value,
+        category: "Gift Cards", // Default category for now
+        displayRate: `₦${item.rate || item.buy_rate || 0}`,
+        displayValue: `$${item.value}`,
+        description: `${item.variant_name} - $${item.value}`,
+        popularity: Math.floor(Math.random() * 100) + 1, // Mock popularity
+        brandId: item.buy_brand_id,
+      }))
+
+      // Process sell rates
+      const processedSellRates = (sellRates || []).map(item => ({
+        id: `sell-${item.id}`,
+        type: "sell",
+        brandName: item.giftcards_sell?.name || "Unknown Brand",
+        brandImage: item.giftcards_sell?.image_url,
+        variantName: item.name,
+        rate: item.sell_rate,
+        value: null, // Sell rates don't have specific values
+        category: "Gift Cards", // Default category for now
+        displayRate: `₦${item.sell_rate}`,
+        displayValue: "Variable",
+        description: item.name,
+        popularity: Math.floor(Math.random() * 100) + 1, // Mock popularity
+        brandId: item.brand_id,
+      }))
+
+      const allRates = [...processedBuyRates, ...processedSellRates]
+      setRates(allRates)
     } catch (error) {
-      console.error("Error fetching data:", error)
+      console.error("Error fetching rates:", error)
+      Alert.alert("Error", "Failed to load rates")
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }, [])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  useFocusEffect(
+    useCallback(() => {
+      fetchRates()
+    }, [fetchRates])
+  )
 
-  // Reset calculator and selected items when tab changes
   useEffect(() => {
-    setSelectedSellBrand(null)
-    setSelectedSellVariant(null)
-    setSelectedBuyBrand(null)
-    setSelectedBuyVariant(null)
-    setCalculatorAmount("")
-    setCalculatedNaira("0.00")
-  }, [activeTab])
+    let filtered = [...rates]
 
-  // Calculate payout whenever relevant states change
-  useEffect(() => {
-    const amount = Number.parseFloat(calculatorAmount)
-    if (isNaN(amount) || amount <= 0) {
-      setCalculatedNaira("0.00")
-      return
-    }
-    let rate = 0
-    if (activeTab === "sell" && selectedSellVariant) {
-      rate = selectedSellVariant.sell_rate
-      setCalculatedNaira(
-        (amount * rate).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }),
+    // Apply search filter
+    if (search.trim()) {
+      filtered = filtered.filter(rate => 
+        rate.brandName.toLowerCase().includes(search.toLowerCase()) ||
+        rate.variantName.toLowerCase().includes(search.toLowerCase()) ||
+        rate.category.toLowerCase().includes(search.toLowerCase())
       )
-    } else if (activeTab === "buy" && selectedBuyVariant) {
-      // For buy, the calculation is value * rate * quantity (quantity is 1 for single item)
-      // Here, we're calculating total cost for the entered USD amount, so it's amount * rate
-      rate = selectedBuyVariant.rate
-      setCalculatedNaira(
-        (amount * rate).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }),
-      )
-    } else {
-      setCalculatedNaira("0.00")
     }
-  }, [calculatorAmount, selectedSellVariant, selectedBuyVariant, activeTab])
 
-  const openBrandPicker = () => {
-    setPickerType("brand")
-    if (activeTab === "sell") {
-      setPickerData(allSellBrands)
-    } else {
-      // On buy tab, allBuyBrands is already filtered in fetchData
-      setPickerData(allBuyBrands)
+    // Apply type filter
+    if (filter !== "all") {
+      filtered = filtered.filter(rate => rate.type === filter)
     }
-    setIsPickerVisible(true)
-  }
 
-  const openVariantPicker = () => {
-    setPickerType("variant")
-    if (activeTab === "sell" && selectedSellBrand) {
-      setPickerData(selectedSellBrand.giftcards_sell_variants || [])
-    } else if (activeTab === "buy" && selectedBuyBrand) {
-      const variantsForBrand = buyInventoryVariants[selectedBuyBrand.id] || {}
-      setPickerData(Object.values(variantsForBrand))
-    } else {
-      setPickerData([])
-    }
-    setIsPickerVisible(true)
-  }
-
-  const handlePickerSelect = (item) => {
-    if (pickerType === "brand") {
-      if (activeTab === "sell") {
-        setSelectedSellBrand(item)
-        setSelectedSellVariant(null) // Reset variant when brand changes
-      } else {
-        setSelectedBuyBrand(item)
-        setSelectedBuyVariant(null) // Reset variant when brand changes
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "rate":
+          return b.rate - a.rate // Highest rates first
+        case "name":
+          return a.brandName.localeCompare(b.brandName)
+        case "popularity":
+          return b.popularity - a.popularity
+        default:
+          return 0
       }
-    } else if (pickerType === "variant") {
-      if (activeTab === "sell") {
-        setSelectedSellVariant(item)
-      } else {
-        setSelectedBuyVariant(item)
-      }
+    })
+
+    setFilteredRates(filtered)
+  }, [rates, search, filter, sortBy])
+
+  const getRateColor = (rate, type) => {
+    if (type === "buy") {
+      return rate > 1000 ? theme.success : rate > 800 ? theme.warning : theme.error
+    } else {
+      return rate > 900 ? theme.success : rate > 700 ? theme.warning : theme.error
     }
-    setIsPickerVisible(false)
   }
 
-  const renderPickerItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.pickerItem, { borderBottomColor: theme.border }]}
-      onPress={() => handlePickerSelect(item)}
-    >
-      <Text style={[styles.pickerItemText, { color: theme.text }]}>
-        {pickerType === "brand"
-          ? item.name
-          : activeTab === "sell"
-            ? item.name
-            : `${item.name} ($${item.value} @ ₦${item.rate})`}
-      </Text>
-    </TouchableOpacity>
+  const getRateStatus = (rate, type) => {
+    if (type === "buy") {
+      if (rate > 1000) return "Excellent"
+      if (rate > 800) return "Good"
+      return "Fair"
+    } else {
+      if (rate > 900) return "Excellent"
+      if (rate > 700) return "Good"
+      return "Fair"
+    }
+  }
+
+  const getRateIcon = (type) => {
+    return type === "buy" ? "trending-up" : "trending-down"
+  }
+
+  const getRateLabel = (type) => {
+    return type === "buy" ? "Buy Rate" : "Sell Rate"
+  }
+
+  const handleRatePress = (rate) => {
+    if (rate.type === "buy") {
+      // For buy rates, we need to navigate to BuyGiftcardVariants
+      // We'll need to fetch the brand info first
+      navigation.navigate("BuyGiftcardVariants", { 
+        brand: { 
+          id: rate.brandId, 
+          name: rate.brandName, 
+          image_url: rate.brandImage 
+        } 
+      })
+    } else {
+      // For sell rates, navigate to SellGiftcardVariants
+      navigation.navigate("SellGiftcardVariants", { 
+        brand: { 
+          id: rate.brandId, 
+          name: rate.brandName, 
+          image_url: rate.brandImage 
+        } 
+      })
+    }
+  }
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      color: theme.text,
+      fontSize: 16,
+      marginTop: 16,
+      fontWeight: '500',
+    },
+    fixedHeader: {
+      // backgroundColor: theme.primary, // Solid primary color for header
+      paddingHorizontal: 18, // Consistent padding
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45, // Adjust for iOS/Android status bar
+      paddingBottom: 16,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 5 }, // More pronounced shadow
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8, // Android shadow
+      zIndex: 10, // Ensure header is above scrollable content
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between", // Space out title and notification
+    },
+    headerTitle: {
+      color: theme.text,
+      fontSize: 22,
+      fontWeight: "bold",
+      flex: 1,
+      textAlign: "center",
+      marginLeft: -170,
+    },
+    notificationButton: {
+      position: "relative",
+      padding: 4,
+    },
+    notificationBadge: {
+      position: "absolute",
+      top: -2,
+      right: -2,
+      backgroundColor: theme.error,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.primary,
+    },
+    notificationBadgeText: {
+      color: theme.text,
+      fontSize: 10,
+      fontWeight: "bold",
+    },
+    searchContainer: {
+      paddingHorizontal: 18,
+      marginBottom: 16,
+      marginTop: 0,
+      backgroundColor: theme.background,
+      zIndex: 5,
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.surface,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 2,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    searchInput: {
+      flex: 1,
+      color: theme.text,
+      fontSize: 16,
+      paddingVertical: 12,
+      marginLeft: 8,
+    },
+    filtersContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 18,
+      marginBottom: 16,
+      gap: 8,
+      backgroundColor: theme.background,
+      zIndex: 5,
+    },
+    filterChip: {
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    filterChipActive: {
+      backgroundColor: theme.accent,
+      borderColor: theme.accent,
+    },
+    filterChipText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: "500",
+    },
+    filterChipTextActive: {
+      color: theme.primary,
+      fontWeight: "600",
+    },
+    sortContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 0,
+      marginBottom: 16,
+    },
+    sortLabel: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      marginRight: 8,
+    },
+    sortButton: {
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginRight: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    sortButtonActive: {
+      backgroundColor: theme.accent,
+      borderColor: theme.accent,
+    },
+    sortButtonText: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "500",
+    },
+    sortButtonTextActive: {
+      color: theme.primary,
+      fontWeight: "600",
+    },
+    listContainer: {
+      paddingHorizontal: 18,
+      paddingBottom: 32,
+      paddingTop: 0,
+    },
+    rateCard: {
+      backgroundColor: theme.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    brandImageContainer: {
+      width: 60,
+      height: 60,
+      borderRadius: 12,
+      backgroundColor: theme.surfaceSecondary,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 16,
+      overflow: "hidden",
+    },
+    brandImage: {
+      width: 40,
+      height: 40,
+    },
+    brandImagePlaceholder: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: theme.accent,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    brandImagePlaceholderText: {
+      color: theme.primary,
+      fontSize: 18,
+      fontWeight: "bold",
+    },
+    rateInfo: {
+      flex: 1,
+    },
+    brandName: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: "600",
+      marginBottom: 4,
+    },
+    variantName: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      marginBottom: 4,
+    },
+    categoryText: {
+      color: theme.textMuted,
+      fontSize: 12,
+      marginBottom: 4,
+    },
+    rateContainer: {
+      alignItems: "flex-end",
+    },
+    rateValue: {
+      fontSize: 20,
+      fontWeight: "bold",
+      marginBottom: 4,
+    },
+    rateLabel: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      marginBottom: 2,
+    },
+    rateStatus: {
+      fontSize: 10,
+      fontWeight: "600",
+      marginTop: 2,
+    },
+    typeBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      marginBottom: 4,
+    },
+    typeBadgeBuy: {
+      backgroundColor: theme.success + "20",
+    },
+    typeBadgeSell: {
+      backgroundColor: theme.warning + "20",
+    },
+    typeBadgeText: {
+      fontSize: 10,
+      fontWeight: "600",
+    },
+    typeBadgeTextBuy: {
+      color: theme.success,
+    },
+    typeBadgeTextSell: {
+      color: theme.warning,
+    },
+    popularityContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 4,
+    },
+    popularityText: {
+      fontSize: 12,
+      color: theme.textMuted,
+      marginLeft: 4,
+    },
+    emptyState: {
+      alignItems: "center",
+      paddingVertical: 60,
+      paddingHorizontal: 24,
+    },
+    emptyStateTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "600",
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
+      color: theme.textMuted,
+      fontSize: 14,
+      textAlign: "center",
+    },
+    // Skeleton Styles
+    skeletonContainer: {
+      paddingHorizontal: 24,
+      marginTop: 20,
+    },
+    skeletonHeader: {
+      height: 24,
+      width: '60%',
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 4,
+      marginBottom: 16,
+    },
+    skeletonSearchBar: {
+      height: 50,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 20,
+      marginBottom: 16,
+    },
+    skeletonFilterChip: {
+      height: 36,
+      width: 80,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 20,
+      marginRight: 8,
+    },
+    skeletonRateCard: {
+      height: 100,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 16,
+      marginBottom: 12,
+    },
+    summaryContainer: {
+      backgroundColor: theme.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginHorizontal: 0,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    summaryTitle: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: "600",
+      marginBottom: 12,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    summaryLabel: {
+      color: theme.textSecondary,
+      fontSize: 14,
+    },
+    summaryValue: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+  })
+
+  // HottestRatesScreen Skeleton Component
+  const HottestRatesScreenSkeleton = () => (
+    <View style={styles.container}>
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+      {/* Fixed Header Skeleton */}
+      <View style={styles.fixedHeader}>
+        <View style={[styles.skeletonHeader, { width: 150, height: 24 }]} />
+        <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
+      </View>
+
+      {/* Search Bar Skeleton */}
+      <View style={styles.searchContainer}>
+        <View style={styles.skeletonSearchBar} />
+      </View>
+
+      {/* Filter Chips Skeleton */}
+      <View style={styles.filtersContainer}>
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={styles.skeletonFilterChip} />
+        ))}
+      </View>
+
+      {/* Rate Cards Skeleton */}
+      <FlatList
+        data={[1, 2, 3, 4, 5, 6, 7]}
+        keyExtractor={(item) => item.toString()}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContainer}
+        renderItem={() => (
+          <View style={styles.skeletonRateCard} />
+        )}
+      />
+    </View>
   )
 
   if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
-        <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Loading data...</Text>
-      </View>
-    )
+    return <HottestRatesScreenSkeleton />
   }
 
+  // Calculate summary statistics
+  const getSummaryStats = () => {
+    const buyRates = rates.filter(rate => rate.type === "buy")
+    const sellRates = rates.filter(rate => rate.type === "sell")
+    
+    const bestBuyRate = buyRates.length > 0 ? Math.max(...buyRates.map(r => r.rate)) : 0
+    const bestSellRate = sellRates.length > 0 ? Math.max(...sellRates.map(r => r.rate)) : 0
+    const totalBrands = new Set(rates.map(r => r.brandName)).size
+    
+    return {
+      bestBuyRate,
+      bestSellRate,
+      totalBrands,
+      totalRates: rates.length
+    }
+  }
+
+  const summaryStats = getSummaryStats()
+
+  const renderRateCard = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.rateCard} 
+      onPress={() => handleRatePress(item)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.brandImageContainer}>
+        {item.brandImage ? (
+          <Image source={{ uri: item.brandImage }} style={styles.brandImage} resizeMode="contain" />
+        ) : (
+          <View style={styles.brandImagePlaceholder}>
+            <Text style={styles.brandImagePlaceholderText}>{item.brandName[0]}</Text>
+          </View>
+        )}
+      </View>
+      
+      <View style={styles.rateInfo}>
+        <Text style={styles.brandName}>{item.brandName}</Text>
+        <Text style={styles.variantName}>{item.description}</Text>
+        <Text style={styles.categoryText}>{item.category}</Text>
+        
+        <View style={[styles.typeBadge, item.type === "buy" ? styles.typeBadgeBuy : styles.typeBadgeSell]}>
+          <Text style={[styles.typeBadgeText, item.type === "buy" ? styles.typeBadgeTextBuy : styles.typeBadgeTextSell]}>
+            {item.type.toUpperCase()}
+          </Text>
+        </View>
+        
+        <View style={styles.popularityContainer}>
+          <Ionicons name="flame" size={12} color={theme.warning} />
+          <Text style={styles.popularityText}>{item.popularity}% popular</Text>
+        </View>
+      </View>
+      
+      <View style={styles.rateContainer}>
+        <Text style={[styles.rateValue, { color: getRateColor(item.rate, item.type) }]}>
+          {item.displayRate}
+        </Text>
+        <Text style={styles.rateLabel}>{getRateLabel(item.type)}</Text>
+        {item.value && (
+          <Text style={styles.rateLabel}>{item.displayValue}</Text>
+        )}
+        <Text style={[styles.rateStatus, { color: getRateColor(item.rate, item.type) }]}>
+          {getRateStatus(item.rate, item.type)}
+        </Text>
+        <Ionicons 
+          name={getRateIcon(item.type)} 
+          size={16} 
+          color={getRateColor(item.rate, item.type)} 
+        />
+      </View>
+    </TouchableOpacity>
+  )
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+    <View style={styles.container}>
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
 
       {/* Fixed Header */}
-      <View style={[styles.fixedHeader, { backgroundColor: theme.card }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+      <View style={styles.fixedHeader}>
+        <Text style={styles.headerTitle}>Hottest Rates</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("NotificationsScreen")}
+          style={styles.notificationButton}
+        >
+          <Ionicons name="notifications-outline" size={24} color={theme.text} />
+          {unreadCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Rate Calculator</Text>
-        <View style={styles.placeholder} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContainer,
-          { paddingTop: HEADER_HEIGHT + 20 }, // Adjust padding to clear fixed header
-        ]}
+      {/* Fixed Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color={theme.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search brands, variants, categories..."
+            placeholderTextColor={theme.textSecondary}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Fixed Filter Chips */}
+      <View style={styles.filtersContainer}>
+        {["all", "buy", "sell"].map((option) => (
+          <TouchableOpacity
+            key={option}
+            style={[styles.filterChip, filter === option && styles.filterChipActive]}
+            onPress={() => setFilter(option)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterChipText, filter === option && styles.filterChipTextActive]}>
+              {option.charAt(0).toUpperCase() + option.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Scrollable Content */}
+      <FlatList
+        data={filteredRates}
+        keyExtractor={(item) => item.id}
+        renderItem={renderRateCard}
+        ListHeaderComponent={() => (
+          <View>
+            {/* Summary Section */}
+            {rates.length > 0 && (
+              <View style={styles.summaryContainer}>
+                <Text style={styles.summaryTitle}>📊 Rate Summary</Text>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Best Buy Rate:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.success }]}>
+                    ₦{summaryStats.bestBuyRate.toLocaleString()}
+                  </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Best Sell Rate:</Text>
+                  <Text style={[styles.summaryValue, { color: theme.warning }]}>
+                    ₦{summaryStats.bestSellRate.toLocaleString()}
+                  </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Total Brands:</Text>
+                  <Text style={styles.summaryValue}>{summaryStats.totalBrands}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Total Rates:</Text>
+                  <Text style={styles.summaryValue}>{summaryStats.totalRates}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Sort Options */}
+            <View style={styles.sortContainer}>
+              <Text style={styles.sortLabel}>Sort by:</Text>
+              {["rate", "name", "popularity"].map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.sortButton, sortBy === option && styles.sortButtonActive]}
+                  onPress={() => setSortBy(option)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.sortButtonText, sortBy === option && styles.sortButtonTextActive]}>
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="trending-up-outline" size={48} color={theme.textMuted} />
+            <Text style={styles.emptyStateTitle}>No rates found</Text>
+            <Text style={styles.emptyStateSubtext}>
+              {search.trim() ? "Try adjusting your search terms" : "Check back later for updated rates"}
+            </Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={fetchData}
+            onRefresh={fetchRates}
             tintColor={theme.accent}
             colors={[theme.accent]}
             progressBackgroundColor={theme.surface}
           />
         }
-      >
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                shadowColor: theme.shadow,
-              },
-              activeTab === "sell" && {
-                backgroundColor: theme.accent,
-                borderColor: theme.accent,
-                shadowColor: theme.accent,
-              },
-            ]}
-            onPress={() => setActiveTab("sell")}
-          >
-            <Ionicons
-              name="trending-down"
-              size={16}
-              color={activeTab === "sell" ? theme.textContrast : theme.textSecondary}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "sell" ? { color: theme.textContrast } : { color: theme.textSecondary },
-              ]}
-            >
-              Sell Cards
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                shadowColor: theme.shadow,
-              },
-              activeTab === "buy" && {
-                backgroundColor: theme.accent,
-                borderColor: theme.accent,
-                shadowColor: theme.accent,
-              },
-            ]}
-            onPress={() => setActiveTab("buy")}
-          >
-            <Ionicons
-              name="trending-up"
-              size={16}
-              color={activeTab === "buy" ? theme.textContrast : theme.textSecondary}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "buy" ? { color: theme.textContrast } : { color: theme.textSecondary },
-              ]}
-            >
-              Buy Cards
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.calculatorContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            {activeTab === "sell" ? "Sell Card Calculator" : "Buy Card Calculator"}
-          </Text>
-
-          {/* Brand Selector */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Select Brand</Text>
-            <TouchableOpacity
-              style={[styles.dropdownButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              onPress={openBrandPicker}
-            >
-              <Text style={[styles.dropdownButtonText, { color: theme.text }]}>
-                {activeTab === "sell"
-                  ? selectedSellBrand?.name || "Choose a brand"
-                  : selectedBuyBrand?.name || "Choose a brand"}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Variant Selector */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Select Variant</Text>
-            <TouchableOpacity
-              style={[
-                styles.dropdownButton,
-                { backgroundColor: theme.surface, borderColor: theme.border },
-                !(selectedSellBrand || selectedBuyBrand) && styles.dropdownButtonDisabled,
-              ]}
-              onPress={openVariantPicker}
-              disabled={!(selectedSellBrand || selectedBuyBrand)}
-            >
-              <Text style={[styles.dropdownButtonText, { color: theme.text }]}>
-                {activeTab === "sell"
-                  ? selectedSellVariant?.name || "Choose a variant"
-                  : selectedBuyVariant
-                    ? `${selectedBuyVariant.name} ($${selectedBuyVariant.value})`
-                    : "Choose a variant"}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Amount Input */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Amount (USD)</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: theme.surface,
-                  borderColor: theme.border,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Enter amount in USD"
-              placeholderTextColor={theme.textSecondary}
-              keyboardType="numeric"
-              value={calculatorAmount}
-              onChangeText={setCalculatorAmount}
-              editable={!!(selectedSellVariant || selectedBuyVariant)}
-            />
-          </View>
-
-          {/* Calculated Payout */}
-          <View
-            style={[styles.payoutContainer, { backgroundColor: theme.accentBackground, borderColor: theme.accent }]}
-          >
-            <Text style={[styles.payoutLabel, { color: theme.textSecondary }]}>
-              You'll {activeTab === "sell" ? "Receive" : "Pay"}:
-            </Text>
-            <Text style={[styles.payoutValue, { color: theme.accent }]}>₦{calculatedNaira}</Text>
-          </View>
-
-          {/* Clear Button */}
-          <TouchableOpacity
-            style={[styles.clearButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
-            onPress={() => {
-              setSelectedSellBrand(null)
-              setSelectedSellVariant(null)
-              setSelectedBuyBrand(null)
-              setSelectedBuyVariant(null)
-              setCalculatorAmount("")
-              setCalculatedNaira("0.00")
-            }}
-          >
-            <Ionicons name="refresh-circle-outline" size={20} color={theme.text} />
-            <Text style={[styles.clearButtonText, { color: theme.text }]}>Clear Calculator</Text>
-          </TouchableOpacity>
-
-          {/* Proceed Button (Optional, if user wants to go to form after calculation) */}
-          {(selectedSellVariant || selectedBuyVariant) && Number.parseFloat(calculatorAmount) > 0 && (
-            <TouchableOpacity
-              style={[styles.proceedButton, { shadowColor: theme.accent }]}
-              onPress={() => {
-                if (activeTab === "sell") {
-                  navigation.navigate("SellGiftcardForm", {
-                    brand: {
-                      ...selectedSellBrand,
-                      selectedVariant: selectedSellVariant,
-                      sell_rate: selectedSellVariant.sell_rate,
-                    },
-                  })
-                } else {
-                  // For buy, we need to find an actual inventory item to pass to BuyGiftcardForm
-                  // This assumes we're buying one card of the selected variant/value/rate
-                  const availableItems =
-                    buyInventoryVariants[selectedBuyBrand.id]?.[
-                      `${selectedBuyVariant.name}_${selectedBuyVariant.value}_${selectedBuyVariant.rate}`
-                    ]?.items || []
-                  if (availableItems.length > 0) {
-                    navigation.navigate("BuyGiftcardForm", {
-                      brand: selectedBuyBrand,
-                      variant: selectedBuyVariant,
-                      quantity: 1, // Assuming buying one for now from calculator
-                    })
-                  } else {
-                    alert("No available cards for this variant.")
-                  }
-                }
-              }}
-            >
-              <LinearGradient colors={[theme.accent, theme.secondary]} style={styles.proceedButtonGradient}>
-                <Text style={[styles.proceedButtonText, { color: theme.textContrast }]}>
-                  Proceed to {activeTab === "sell" ? "Sell" : "Buy"}
-                </Text>
-                <Ionicons name="arrow-forward" size={20} color={theme.textContrast} style={styles.buttonIcon} />
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Picker Modal */}
-      <Modal isVisible={isPickerVisible} onBackdropPress={() => setIsPickerVisible(false)}>
-        <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-          <Text style={[styles.modalTitle, { color: theme.text }]}>
-            Select {pickerType === "brand" ? "Brand" : "Variant"}
-          </Text>
-          <FlatList
-            data={pickerData}
-            keyExtractor={(item, index) => item.id || `${item.name}-${item.value}-${item.rate}-${index}`}
-            renderItem={renderPickerItem}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>No {pickerType}s available</Text>
-              </View>
-            }
-          />
-          <TouchableOpacity
-            style={[styles.modalCloseButton, { backgroundColor: theme.surface }]}
-            onPress={() => setIsPickerVisible(false)}
-          >
-            <Text style={[styles.modalCloseButtonText, { color: theme.text }]}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      />
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 16,
-  },
-  fixedHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    height: HEADER_HEIGHT,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingTop: StatusBar.currentHeight || 40, // Dynamic padding for status bar
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.1)", // Will be themed
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  backButton: {
-    position: "absolute",
-    left: 20,
-    top: StatusBar.currentHeight || 40, // Align with header content
-    paddingVertical: 8,
-    zIndex: 11,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    flex: 1,
-    textAlign: "center",
-  },
-  placeholder: {
-    width: 24, // To balance the back button
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 24,
-    marginTop: 16,
-    marginBottom: 24,
-    gap: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  calculatorContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  dropdownButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-  },
-  dropdownButtonDisabled: {
-    opacity: 0.6,
-  },
-  dropdownButtonText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  textInput: {
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  payoutContainer: {
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  payoutLabel: {
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  payoutValue: {
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-  clearButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 8,
-  },
-  clearButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  proceedButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  proceedButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-  },
-  proceedButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginRight: 8,
-  },
-  buttonIcon: {
-    marginLeft: 4,
-  },
-  modalContent: {
-    borderRadius: 20,
-    padding: 20,
-    maxHeight: Dimensions.get("window").height * 0.7,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  pickerItem: {
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-  },
-  pickerItemText: {
-    fontSize: 16,
-  },
-  modalCloseButton: {
-    marginTop: 20,
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  modalCloseButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  emptyStateText: {
-    fontSize: 16,
-  },
-})

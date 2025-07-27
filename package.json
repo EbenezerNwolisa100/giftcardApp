@@ -12,6 +12,7 @@
     "@expo/vector-icons": "^14.1.0",
     "@gorhom/bottom-sheet": "^4.4.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-community/datetimepicker": "^8.4.2",
     "@react-native-picker/picker": "^2.11.1",
     "@react-navigation/bottom-tabs": "^7.4.2",
@@ -27,6 +28,7 @@
     "expo-sharing": "~13.1.5",
     "expo-status-bar": "~2.2.3",
     "hoist-non-react-statics": "^3.3.2",
+    "nativewind": "^4.1.23",
     "node-fetch": "^3.3.2",
     "react": "19.0.0",
     "react-native": "0.79.5",
@@ -34,7 +36,8 @@
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-reanimated": "^2.14.4",
     "react-native-safe-area-context": "^5.4.0",
-    "react-native-screens": "^4.11.1"
+    "react-native-screens": "^4.11.1",
+    "tailwind-rn": "^4.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -410,6 +410,7 @@
 
 
 
+
 "use client"
 
 import { useState } from "react"
@@ -431,6 +432,9 @@ import { supabase } from "./supabaseClient" // Adjust path as needed
 import { Ionicons, MaterialIcons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useTheme } from "./ThemeContext" // Adjust path as needed
+import { Image } from "react-native";
+import lightLogo from "../assets/lightlogo.png";
+import darkLogo from "../assets/darklogo.png";
 
 const { width } = Dimensions.get("window")
 
@@ -515,48 +519,48 @@ export default function Register({ navigation }) {
       flexGrow: 1,
       paddingHorizontal: 24,
       justifyContent: "center",
+      paddingBottom: 40, // Add some padding at the bottom for scroll
     },
     header: {
       paddingTop: 60,
-      marginBottom: 20,
+      marginBottom: 30,
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     backButton: {
       padding: 8,
-      alignSelf: "flex-start",
+      marginRight: 10,
     },
     logoSection: {
       alignItems: "center",
       marginBottom: 40,
+      width: '100%',
     },
-    logoContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: isDarkTheme ? theme.surface : theme.secondary,
-      justifyContent: "center",
-      alignItems: "center",
+    logoImage: {
+      width: 90,
+      height: 90,
+      borderRadius: 22,
       marginBottom: 20,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 5,
     },
     title: {
-      fontSize: 32,
+      fontSize: 34,
       fontWeight: "bold",
       color: theme.text,
-      marginBottom: 8,
+      marginBottom: 10,
+      textAlign: 'center',
     },
     subtitle: {
       fontSize: 16,
       color: theme.textSecondary,
       textAlign: "center",
-      lineHeight: 22,
+      lineHeight: 24,
       paddingHorizontal: 20,
+      maxWidth: 350,
     },
     formContainer: {
       width: "100%",
+      maxWidth: 400,
+      alignSelf: 'center',
     },
     inputContainer: {
       marginBottom: 20,
@@ -564,11 +568,12 @@ export default function Register({ navigation }) {
     inputWrapper: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.surfaceSecondary, // New input background color
+      backgroundColor: theme.surfaceSecondary,
       borderRadius: 12,
       paddingHorizontal: 16,
-      borderWidth: 2, // Slightly thicker border
-      borderColor: theme.border, // Border color from theme
+      borderWidth: 1,
+      borderColor: theme.border,
+      height: 56,
     },
     inputIcon: {
       marginRight: 12,
@@ -578,10 +583,10 @@ export default function Register({ navigation }) {
       flex: 1,
       color: theme.text,
       fontSize: 16,
-      paddingVertical: 16,
+      paddingVertical: 0,
     },
     eyeButton: {
-      padding: 4,
+      padding: 8,
     },
     passwordRequirements: {
       marginBottom: 24,
@@ -607,39 +612,37 @@ export default function Register({ navigation }) {
       color: theme.success,
     },
     registerButton: {
-      borderRadius: 16,
-      overflow: "hidden",
-      marginBottom: 24,
-      backgroundColor: theme.accent, // Solid accent color
+      borderRadius: 12,
+      backgroundColor: theme.accent,
       paddingVertical: 18,
-      paddingHorizontal: 32,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      elevation: 8,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 10,
     },
     registerButtonDisabled: {
-      opacity: 0.7,
+      opacity: 0.6,
     },
     registerButtonText: {
-      color: theme.primary, // White text for contrast on Gunmetal
+      color: theme.primary,
       fontSize: 18,
       fontWeight: "bold",
-      marginRight: 8,
+      marginRight: 10,
+      letterSpacing: 0.5,
     },
     buttonIcon: {
       marginLeft: 4,
-      color: theme.primary, // White icon for contrast
+      color: theme.primary,
     },
     loginLinkContainer: {
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 20,
+      marginTop: 30,
     },
     loginLinkText: {
       color: theme.textSecondary,
@@ -653,14 +656,18 @@ export default function Register({ navigation }) {
     termsContainer: {
       paddingVertical: 24,
       alignItems: "center",
-      marginTop: "auto",
+      marginTop: 40,
+      borderTopWidth: 1,
+      borderColor: theme.border,
+      paddingTop: 20,
     },
     termsText: {
       color: theme.textMuted,
-      fontSize: 12,
+      fontSize: 13,
       textAlign: "center",
       lineHeight: 18,
       paddingHorizontal: 10,
+      maxWidth: 350,
     },
     termsLink: {
       color: theme.accent,
@@ -687,9 +694,11 @@ export default function Register({ navigation }) {
 
           {/* Logo and Title */}
           <View style={styles.logoSection}>
-            <View style={styles.logoContainer}>
-              <MaterialIcons name="person-add" size={32} color={theme.accent} />
-            </View>
+            <Image
+              source={isDarkTheme ? lightLogo : darkLogo}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join thousands of users trading gift cards securely</Text>
           </View>

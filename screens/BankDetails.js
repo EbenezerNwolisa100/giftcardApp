@@ -16,7 +16,7 @@ import {
 import { supabase } from "./supabaseClient"
 import CustomDropdown from "./CustomDropdown"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
-import { Ionicons } from "@expo/vector-icons" // Added MaterialIcons for header icon
+import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "./ThemeContext"
 
 const NIGERIAN_BANKS = [
@@ -35,7 +35,7 @@ const NIGERIAN_BANKS = [
 ]
 
 // Define a consistent header height for fixed positioning
-const HEADER_HEIGHT = Platform.OS === "ios" ? 100 : 70
+const HEADER_HEIGHT_BANK = Platform.OS === "ios" ? 100 : 70
 
 export default function BankDetails() {
   const { theme, isDarkTheme } = useTheme()
@@ -50,28 +50,35 @@ export default function BankDetails() {
   const fetchBank = useCallback(async () => {
     setLoading(true)
     setRefreshing(true)
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+      const { data: bankData, error } = await supabase.from("user_banks").select("*").eq("user_id", user.id).single()
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+        console.error("Error fetching bank details:", error)
+        setModalMessage(error.message || "Failed to load bank details.")
+        setModalVisible(true)
+      } else if (bankData) {
+        setBankForm({
+          bank_name: bankData.bank_name,
+          account_number: bankData.account_number,
+          account_name: bankData.account_name,
+        })
+      }
+    } catch (e) {
+      console.error("Unexpected error fetching bank details:", e);
+      setModalMessage(e.message || "An unexpected error occurred.")
+      setModalVisible(true)
+    } finally {
       setLoading(false)
       setRefreshing(false)
-      return
     }
-    const { data: bankData, error } = await supabase.from("user_banks").select("*").eq("user_id", user.id).single()
-    if (error) {
-      console.error("Error fetching bank details:", error)
-      setModalMessage(error.message || "Failed to load bank details.")
-      setModalVisible(true)
-    } else if (bankData) {
-      setBankForm({
-        bank_name: bankData.bank_name,
-        account_number: bankData.account_number,
-        account_name: bankData.account_name,
-      })
-    }
-    setLoading(false)
-    setRefreshing(false)
   }, [])
 
   useFocusEffect(
@@ -91,26 +98,32 @@ export default function BankDetails() {
       return
     }
     setSaving(true)
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setSaving(false)
+        return
+      }
+      const { error } = await supabase.from("user_banks").upsert({
+        user_id: user.id,
+        bank_name: bankForm.bank_name,
+        account_number: bankForm.account_number,
+        account_name: bankForm.account_name,
+      }, { onConflict: 'user_id' }) // Use onConflict for upserting
+
+      if (error) {
+        throw error;
+      } else {
+        setModalMessage("Bank details saved!")
+        setModalVisible(true)
+      }
+    } catch (e) {
+      setModalMessage(e.message || "Failed to save bank details.")
+      setModalVisible(true)
+    } finally {
       setSaving(false)
-      return
-    }
-    const { error } = await supabase.from("user_banks").upsert({
-      user_id: user.id,
-      bank_name: bankForm.bank_name,
-      account_number: bankForm.account_number,
-      account_name: bankForm.account_name,
-    })
-    setSaving(false)
-    if (error) {
-      setModalMessage(error.message)
-      setModalVisible(true)
-    } else {
-      setModalMessage("Bank details saved!")
-      setModalVisible(true)
     }
   }
 
@@ -129,20 +142,21 @@ export default function BankDetails() {
       color: theme.text,
       fontSize: 16,
       marginTop: 16,
+      fontWeight: '500',
     },
     fixedHeader: {
-      position: "absolute", // Make it truly fixed
+      position: "absolute",
       top: 0,
       left: 0,
       right: 0,
       backgroundColor: theme.primary,
       paddingHorizontal: 24,
-      paddingTop: Platform.OS === "ios" ? 50 : 20, // Adjust for iOS notch
+      paddingTop: Platform.OS === "ios" ? 50 : StatusBar.currentHeight + 10,
       paddingBottom: 15,
-      borderBottomWidth: 1, // New visual element
-      borderBottomColor: theme.border, // Use theme border
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 4 }, // Stronger shadow
+      shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 5,
       elevation: 5,
@@ -155,25 +169,25 @@ export default function BankDetails() {
       padding: 8,
     },
     headerTitle: {
-      color: theme.text,
+      color: theme.textContrast,
       fontSize: 20,
       fontWeight: "600",
       flex: 1,
       textAlign: "center",
     },
     placeholder: {
-      width: 40, // To balance the back button space
+      width: 40,
     },
     scrollContainer: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingBottom: Platform.OS === "ios" ? 85 + 20 : 70 + 20, // Account for tab bar height
-      paddingTop: HEADER_HEIGHT + 20, // Push content down below the fixed header + some extra space
+      paddingBottom: Platform.OS === "ios" ? 85 + 20 : 70 + 20,
+      paddingTop: 10,
     },
     formCard: {
-      backgroundColor: theme.surface,
-      borderRadius: 16, // Slightly smaller radius for a different feel
-      padding: 24,
+      // backgroundColor: theme.surface,
+      borderRadius: 16,
+      // padding: 24,
       marginBottom: 24,
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 4 },
@@ -219,7 +233,7 @@ export default function BankDetails() {
       opacity: 0.7,
     },
     saveButtonText: {
-      color: isDarkTheme ? theme.text : theme.primary,
+      color: theme.primary, // Changed to theme.primary for consistency with accent button
       fontSize: 18,
       fontWeight: "bold",
       marginRight: 8,
@@ -256,33 +270,100 @@ export default function BankDetails() {
       borderRadius: 12,
     },
     modalButtonText: {
-      color: isDarkTheme ? theme.text : theme.primary,
+      color: theme.primary, // Changed to theme.primary for consistency with accent button
       fontSize: 16,
       fontWeight: "bold",
     },
+    // Skeleton Styles
+    skeletonContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    skeletonFixedHeader: {
+      height: HEADER_HEIGHT_BANK,
+      backgroundColor: theme.primary,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+      zIndex: 10,
+    },
+    skeletonFormCard: {
+      height: 400, // Approximate height of the form card
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 16,
+      marginHorizontal: 24,
+      marginTop: 20,
+      marginBottom: 24,
+    },
   })
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
-        <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={styles.loadingText}>Loading bank details...</Text>
+  // BankDetails Skeleton Component
+  const BankDetailsSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+      {/* Fixed Header Skeleton */}
+      <View style={styles.skeletonFixedHeader}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === "ios" ? 50 : StatusBar.currentHeight + 10, paddingBottom: 15, width: '100%' }}>
+          <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} /> {/* Back button placeholder */}
+          <View style={[styles.headerTitle, { backgroundColor: theme.surfaceSecondary, width: 150, height: 24 }]} /> {/* Title placeholder */}
+          <View style={styles.placeholder} />
+        </View>
       </View>
-    )
+
+      <ScrollView
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: HEADER_HEIGHT_BANK + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Form Card Skeleton */}
+        <View style={styles.skeletonFormCard} />
+      </ScrollView>
+    </View>
+  );
+
+  if (loading) {
+    return <BankDetailsSkeleton />;
   }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
 
-      {/* Fixed Header */}
-      <View style={styles.fixedHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <View
+        style={{
+          // backgroundColor: theme.primary,
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          // elevation: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            marginLeft: 0,
+            padding: 6,
+            borderRadius: 6,
+          }}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bank Details</Text>
-        <View style={styles.placeholder} />
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold' }}>Bank Details</Text>
+        <View style={{ width: 32, height: 32 }} />
       </View>
 
       <ScrollView
@@ -330,23 +411,37 @@ export default function BankDetails() {
               onChangeText={(v) => handleBankFormChange("account_name", v)}
             />
           </View>
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-            onPress={handleBankSave}
-            disabled={saving}
-            activeOpacity={0.8}
-          >
-            {saving ? (
-              <ActivityIndicator color={isDarkTheme ? theme.text : theme.primary} size="small" />
-            ) : (
-              <>
-                <Text style={styles.saveButtonText}>Save Bank Details</Text>
-                <Ionicons name="checkmark" size={16} color={isDarkTheme ? theme.text : theme.primary} />
-              </>
-            )}
-          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <View style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: theme.background,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderTopWidth: 1,
+        borderTopColor: theme.border,
+        zIndex: 20,
+      }}>
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleBankSave}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          {saving ? (
+            <ActivityIndicator color={theme.primary} size="small" />
+          ) : (
+            <>
+              <Text style={styles.saveButtonText}>Save Bank Details</Text>
+              <Ionicons name="checkmark" size={16} color={theme.primary} />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Custom Modal for errors and confirmations */}
       <Modal

@@ -125,16 +125,44 @@ const Withdrawals = () => {
         }
         updateObj.rejection_reason = rejectReason.trim();
       }
-      const { error } = await supabase
+      
+      // Update withdrawal status
+      const { error: withdrawalError } = await supabase
         .from('withdrawals')
         .update(updateObj)
         .eq('id', selectedW.id);
-      if (error) throw error;
-      setActionSuccess(`Withdrawal ${status}.`);
+      if (withdrawalError) throw withdrawalError;
+
+      // If withdrawal is rejected, refund the money to user's wallet
+      if (status === 'rejected') {
+        // Get current user balance
+        const { data: userProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('balance')
+          .eq('id', selectedW.user_id)
+          .single();
+        
+        if (profileError) throw profileError;
+        
+        // Calculate new balance (add back the withdrawal amount)
+        const currentBalance = userProfile.balance || 0;
+        const newBalance = currentBalance + Number(selectedW.amount);
+        
+        // Update user's wallet balance
+        const { error: balanceError } = await supabase
+          .from('profiles')
+          .update({ balance: newBalance })
+          .eq('id', selectedW.user_id);
+        
+        if (balanceError) throw balanceError;
+      }
+
+      setActionSuccess(`Withdrawal ${status}.${status === 'rejected' ? ' Amount has been refunded to user wallet.' : ''}`);
       setSelectedW({ ...selectedW, status, rejection_reason: updateObj.rejection_reason });
       setWithdrawals(ws => ws.map(w => w.id === selectedW.id ? { ...w, status, rejection_reason: updateObj.rejection_reason } : w));
       setShowRejectReason(false);
       setRejectReason('');
+      
       // Insert notification for the user
       let notifTitle = '';
       let notifBody = '';
@@ -142,9 +170,10 @@ const Withdrawals = () => {
         notifTitle = 'Withdrawal Approved';
         notifBody = `Your withdrawal of ₦${Number(selectedW.amount).toLocaleString()} has been approved.`;
       } else if (status === 'rejected') {
-        notifTitle = 'Withdrawal Rejected';
-        notifBody = `Your withdrawal of ₦${Number(selectedW.amount).toLocaleString()} was rejected. Reason: ${updateObj.rejection_reason}`;
+        notifTitle = 'Withdrawal Rejected & Refunded';
+        notifBody = `Your withdrawal of ₦${Number(selectedW.amount).toLocaleString()} was rejected and refunded to your wallet. Reason: ${updateObj.rejection_reason}`;
       }
+      
       if (notifTitle && notifBody) {
         await supabase.from('notifications').insert({
           user_id: selectedW.user_id,
@@ -152,6 +181,7 @@ const Withdrawals = () => {
           body: notifBody,
           read: false
         });
+        
         // Send push notification if user has expo_push_token
         const { data: userProfile } = await supabase
           .from('profiles')
@@ -173,7 +203,8 @@ const Withdrawals = () => {
           });
         }
       }
-    } catch {
+    } catch (error) {
+      console.error('Error handling withdrawal action:', error);
       setActionError('Failed to update withdrawal.');
     }
     setActionLoading(false);

@@ -1,6 +1,4 @@
-"use client"
-
-import { useState } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   View,
   Text,
@@ -11,21 +9,72 @@ import {
   Dimensions,
   ScrollView,
   Platform,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from "react-native"
-import { useRoute, useNavigation } from "@react-navigation/native"
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native" // Import useFocusEffect
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "./ThemeContext"
+import { supabase } from "./supabaseClient" // Import supabase
 
-const { height } = Dimensions.get("window")
-const HEADER_HEIGHT = Platform.OS === "android" ? 90 : 100 // Adjusted height for header
+const { width, height } = Dimensions.get("window")
+const HEADER_HEIGHT_VARIANTS = Platform.OS === 'android' ? StatusBar.currentHeight + 80 : 100; // Approximate height for fixed header
 
 export default function SellGiftcardVariants() {
   const route = useRoute()
   const navigation = useNavigation()
   const { brand } = route.params
   const [selectedVariant, setSelectedVariant] = useState(null)
-  const variants = brand.giftcards_sell_variants || []
-  const { theme } = useTheme()
+  const [variants, setVariants] = useState([]) // Initialize variants state
+  const [loading, setLoading] = useState(true) // Add loading state
+  const [refreshing, setRefreshing] = useState(false) // Add refreshing state
+  const [unreadCount, setUnreadCount] = useState(0) // State for unread notifications
+  const { theme, isDarkTheme } = useTheme()
+
+  const fetchVariantsAndNotifications = useCallback(async () => {
+    setLoading(true);
+    setRefreshing(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Fetch variants for the brand
+      const { data: variantData, error: variantError } = await supabase
+        .from("giftcards_sell_variants")
+        .select("id, name, sell_rate")
+        .eq("brand_id", brand.id)
+        .order("name", { ascending: true }); // Order variants for consistency
+
+      if (variantError) throw variantError;
+      setVariants(variantData || []);
+
+      // Fetch unread notifications count
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+      setUnreadCount(count || 0);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      Alert.alert("Error", error.message || "Failed to load variants or notifications.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [brand.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchVariantsAndNotifications();
+    }, [fetchVariantsAndNotifications])
+  );
 
   const handleVariantSelect = (variant) => {
     const brandWithVariant = {
@@ -41,65 +90,91 @@ export default function SellGiftcardVariants() {
       flex: 1,
       backgroundColor: theme.background,
     },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      color: theme.text,
+      fontSize: 16,
+      marginTop: 16,
+      fontWeight: '500',
+    },
     fixedHeader: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: HEADER_HEIGHT,
       backgroundColor: theme.primary,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      paddingHorizontal: 18,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60,
+      paddingBottom: 20,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
       zIndex: 10,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 50,
     },
     backButton: {
-      paddingVertical: 8,
+      padding: 8,
     },
     headerTitle: {
-      color: theme.textContrast,
-      fontSize: 20,
+      color: theme.text,
+      fontSize: 24,
       fontWeight: "bold",
+      flex: 1,
+      textAlign: "center",
+      marginLeft: -40, // Counteract back button width to center title
     },
-    placeholder: {
-      width: 40,
+    notificationButton: {
+      position: "relative",
+      padding: 4,
+    },
+    notificationBadge: {
+      position: "absolute",
+      top: -2,
+      right: -2,
+      backgroundColor: theme.error,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.primary,
+    },
+    notificationBadgeText: {
+      color: theme.text,
+      fontSize: 10,
+      fontWeight: "bold",
     },
     scrollContainer: {
       flexGrow: 1,
-      paddingHorizontal: 20,
-      paddingTop: HEADER_HEIGHT, // Offset for the fixed header
-      paddingBottom: 40,
+      paddingHorizontal: 18,
+      paddingBottom: Platform.OS === "ios" ? 85 + 20 : 70 + 20, // Account for tab bar height
+      paddingTop: 0, // Space after fixed header
     },
     brandCard: {
+      backgroundColor: theme.surface,
       borderRadius: 20,
       overflow: "hidden",
       marginBottom: 32,
-      elevation: 8,
+      elevation: 5,
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.2,
       shadowRadius: 8,
-      backgroundColor: theme.card, // Use theme.card for brand card background
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    brandGradient: {
       flexDirection: "row",
       alignItems: "center",
       padding: 24,
     },
     brandImageContainer: {
-      width: 60,
-      height: 60,
+      width: 130,
+      height: 100,
       borderRadius: 12,
       backgroundColor: theme.background,
       justifyContent: "center",
@@ -107,19 +182,19 @@ export default function SellGiftcardVariants() {
       marginRight: 16,
     },
     brandImage: {
-      width: 40,
-      height: 40,
+      width: 100,
+      height: 80,
     },
     brandImagePlaceholder: {
-      width: 40,
-      height: 40,
+      width: 60,
+      height: 45,
       borderRadius: 8,
-      backgroundColor: theme.primary,
+      backgroundColor: theme.accent,
       justifyContent: "center",
       alignItems: "center",
     },
     brandImagePlaceholderText: {
-      color: theme.textContrast,
+      color: theme.primary,
       fontSize: 18,
       fontWeight: "bold",
     },
@@ -137,7 +212,7 @@ export default function SellGiftcardVariants() {
       fontSize: 14,
     },
     variantsContainer: {
-      gap: 16,
+      marginBottom: 24,
     },
     sectionTitle: {
       color: theme.text,
@@ -146,21 +221,26 @@ export default function SellGiftcardVariants() {
       marginBottom: 16,
     },
     variantCard: {
-      backgroundColor: theme.card,
+      backgroundColor: theme.surfaceSecondary,
       borderRadius: 16,
       padding: 20,
+      marginBottom: 12,
       borderWidth: 2,
       borderColor: theme.border,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     variantCardSelected: {
-      borderColor: theme.warning,
-      backgroundColor: theme.warningBackground,
+      borderColor: theme.accent,
+      backgroundColor: theme.surface, // Changed to use theme.surface
     },
     variantContent: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 12,
     },
     variantInfo: {
       flex: 1,
@@ -174,6 +254,7 @@ export default function SellGiftcardVariants() {
     rateContainer: {
       flexDirection: "row",
       alignItems: "center",
+      marginBottom: 4,
     },
     rateText: {
       color: theme.warning,
@@ -185,11 +266,12 @@ export default function SellGiftcardVariants() {
       padding: 8,
     },
     exampleContainer: {
-      backgroundColor: theme.successBackground,
+      backgroundColor: theme.success + "1A", // Tint of success
       borderRadius: 8,
       padding: 12,
       borderWidth: 1,
-      borderColor: theme.successBorder,
+      borderColor: theme.success, // Use success for border
+      marginTop: 8,
     },
     exampleText: {
       color: theme.success,
@@ -203,7 +285,7 @@ export default function SellGiftcardVariants() {
       paddingHorizontal: 24,
     },
     emptyStateText: {
-      color: theme.textSecondary,
+      color: theme.text,
       fontSize: 18,
       fontWeight: "600",
       marginTop: 16,
@@ -214,66 +296,197 @@ export default function SellGiftcardVariants() {
       fontSize: 14,
       textAlign: "center",
     },
+    // Skeleton Styles
+    skeletonContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    skeletonFixedHeader: {
+      height: HEADER_HEIGHT_VARIANTS,
+      backgroundColor: theme.primary,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+      zIndex: 10,
+    },
+    skeletonBrandCard: {
+      height: 120, // Approximate height of brand card
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 20,
+      marginHorizontal: 24,
+      marginTop: 20,
+      marginBottom: 32,
+    },
+    skeletonSectionTitle: {
+      height: 20,
+      width: '50%',
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 4,
+      marginBottom: 16,
+      alignSelf: 'flex-start',
+      marginLeft: 24,
+    },
+    skeletonVariantCard: {
+      height: 100, // Approximate height of variant card
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 16,
+      marginBottom: 12,
+      marginHorizontal: 24,
+    },
   })
+
+  // SellGiftcardVariants Skeleton Component
+  const SellGiftcardVariantsSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+      {/* Fixed Header Skeleton */}
+      <View style={styles.skeletonFixedHeader}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60, paddingBottom: 20, width: '100%' }}>
+          <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} /> {/* Back button placeholder */}
+          <View style={[styles.headerTitle, { backgroundColor: theme.surfaceSecondary, width: 180, height: 24 }]} /> {/* Title placeholder */}
+          <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: HEADER_HEIGHT_VARIANTS + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Brand Info Skeleton */}
+        <View style={styles.skeletonBrandCard} />
+
+        {/* Variants List Skeletons */}
+        <View style={styles.skeletonSectionTitle} />
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={styles.skeletonVariantCard} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  if (loading) {
+    return <SellGiftcardVariantsSkeleton />;
+  }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.primary} />
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+
       {/* Fixed Header */}
-      <View style={styles.fixedHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.textContrast} />
+      <View
+        style={{
+          // backgroundColor: theme.primary,
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          // elevation: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            marginLeft: 0,
+            padding: 6,
+            borderRadius: 6,
+          }}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Variant</Text>
-        <View style={styles.placeholder} />
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold' }}>Select Variant</Text>
+        <View style={{ width: 32, height: 32 }} />
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchVariantsAndNotifications}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+            progressBackgroundColor={theme.surface}
+          />
+        }
+      >
         {/* Brand Info */}
         <View style={styles.brandCard}>
-          <View style={styles.brandGradient}>
-            <View style={styles.brandImageContainer}>
-              {brand.image_url ? (
-                <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
-              ) : (
-                <View style={styles.brandImagePlaceholder}>
-                  <Text style={styles.brandImagePlaceholderText}>{brand.name[0]}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.brandInfo}>
-              <Text style={styles.brandName}>{brand.name}</Text>
-              <Text style={styles.brandSubtext}>Choose a variant to sell</Text>
-            </View>
+          <View style={styles.brandImageContainer}>
+            {brand.image_url ? (
+              <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
+            ) : (
+              <View style={styles.brandImagePlaceholder}>
+                <Text style={styles.brandImagePlaceholderText}>{brand.name[0]}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.brandInfo}>
+            <Text style={styles.brandName}>{brand.name}</Text>
+            {/* <Text style={styles.brandSubtext}>{brand.available_count} cards available</Text> */}
           </View>
         </View>
+
         {/* Variants List */}
         <View style={styles.variantsContainer}>
           <Text style={styles.sectionTitle}>Available Variants</Text>
           {variants.map((variant, index) => (
             <TouchableOpacity
               key={variant.id}
-              style={[styles.variantCard, selectedVariant?.id === variant.id && styles.variantCardSelected]}
+              style={[
+                styles.variantCard,
+                selectedVariant?.id === variant.id && styles.variantCardSelected,
+              ]}
               onPress={() => handleVariantSelect(variant)}
               activeOpacity={0.8}
             >
               <View style={styles.variantContent}>
                 <View style={styles.variantInfo}>
-                  <Text style={styles.variantName}>{variant.name}</Text>
+                  <Text style={styles.variantName}>
+                    {variant.name}
+                  </Text>
                   <View style={styles.rateContainer}>
-                    <Ionicons name="trending-up" size={16} color={theme.warning} />
+                    {/* <Ionicons name="trending-up" size={16} color={theme.warning} /> */}
                     <Text style={styles.rateText}>₦{variant.sell_rate} per $1</Text>
                   </View>
+                  {/* <Text style={styles.availableText}>{variant.available_count} available</Text> */}
                 </View>
                 <View style={styles.variantAction}>
-                  <Ionicons name="arrow-forward" size={20} color={theme.textContrast} />
+                  <Ionicons
+                    name={
+                      selectedVariant?.id === variant.id
+                        ? "checkmark-circle"
+                        : "arrow-forward"
+                    }
+                    size={20}
+                    color={
+                      selectedVariant?.id === variant.id
+                        ? theme.success
+                        : theme.text
+                    }
+                  />
                 </View>
               </View>
               {/* Example calculation */}
-              <View style={styles.exampleContainer}>
+              {/* <View style={styles.exampleContainer}>
                 <Text style={styles.exampleText}>
                   Example: $100 card = ₦{(100 * variant.sell_rate).toLocaleString()}
                 </Text>
-              </View>
+              </View> */}
             </TouchableOpacity>
           ))}
         </View>
@@ -281,7 +494,7 @@ export default function SellGiftcardVariants() {
           <View style={styles.emptyState}>
             <Ionicons name="alert-circle-outline" size={48} color={theme.textMuted} />
             <Text style={styles.emptyStateText}>No variants available</Text>
-            <Text style={styles.emptyStateSubtext}>This brand doesn't have any variants configured yet</Text>
+            <Text style={styles.emptyStateSubtext}>This brand doesn't have any available inventory</Text>
           </View>
         )}
       </ScrollView>

@@ -1,5 +1,5 @@
 "use client"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   View,
   Text,
@@ -10,13 +10,13 @@ import {
   StatusBar,
   Dimensions,
   ScrollView,
-  RefreshControl, // Import RefreshControl
-  Platform, // Import Platform
+  RefreshControl,
+  Platform,
 } from "react-native"
 import { supabase } from "./supabaseClient"
-import { useNavigation, useFocusEffect } from "@react-navigation/native" // Import useFocusEffect
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { MaterialIcons, Feather, Ionicons } from "@expo/vector-icons"
-import { useTheme } from "./ThemeContext" // Correctly import useTheme
+import { useTheme } from "./ThemeContext"
 
 const { width } = Dimensions.get("window")
 
@@ -61,9 +61,10 @@ export default function Profile() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState({ full_name: "", email: "", transaction_pin: null })
   const [logoutLoading, setLogoutLoading] = useState(false)
-  const [refreshing, setRefreshing] = useState(false) // State for RefreshControl
+  const [refreshing, setRefreshing] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0) // State for unread notifications
   const navigation = useNavigation()
-  const { theme, isDarkTheme, toggleTheme } = useTheme() // Correctly destructure toggleTheme from useTheme
+  const { theme, isDarkTheme, toggleTheme } = useTheme()
 
   const fetchProfile = useCallback(async () => {
     setLoading(true)
@@ -91,6 +92,15 @@ export default function Profile() {
           transaction_pin: profileData.transaction_pin,
         })
       }
+
+      // Fetch unread notifications count
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false)
+      setUnreadCount(count || 0)
+
     } catch (err) {
       console.error("Error fetching profile:", err)
       Alert.alert("Error", err.message || "Failed to load profile.")
@@ -128,20 +138,21 @@ export default function Profile() {
       color: theme.text,
       fontSize: 16,
       marginTop: 16,
+      fontWeight: '500',
     },
     // Fixed Header Styles
     fixedHeader: {
-      backgroundColor: theme.primary, // Solid primary color for header
-      paddingHorizontal: 24,
-      paddingTop: 40,
-      paddingBottom: 20,
+      // backgroundColor: theme.primary, // Solid primary color for header
+      paddingHorizontal: 18,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45, // Adjust for iOS/Android status bar
+      paddingBottom: 10,
       borderBottomLeftRadius: 20,
       borderBottomRightRadius: 20,
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 5 }, // More pronounced shadow
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8, // Android shadow
       zIndex: 10, // Ensure header is above scrollable content
       flexDirection: "row",
       alignItems: "center",
@@ -149,17 +160,35 @@ export default function Profile() {
     },
     headerTitle: {
       color: theme.text,
-      fontSize: 20,
-      fontWeight: "600",
+      fontSize: 24, // Larger title
+      fontWeight: "bold",
     },
     notificationButton: {
+      position: "relative",
       padding: 8,
+    },
+    notificationBadge: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      backgroundColor: theme.error,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.primary,
+    },
+    notificationBadgeText: {
+      color: theme.primary,
+      fontSize: 10,
+      fontWeight: "bold",
     },
     scrollContainer: {
       flexGrow: 1,
-      paddingHorizontal: 24,
+      paddingHorizontal: 18,
       paddingBottom: Platform.OS === "ios" ? 85 + 20 : 70 + 20, // Account for tab bar height
-      paddingTop: 20, // Space after fixed header
     },
     profileCard: {
       backgroundColor: theme.surface, // Solid surface color
@@ -170,9 +199,10 @@ export default function Profile() {
       shadowOpacity: 0.2,
       shadowRadius: 8,
       elevation: 5,
-      flexDirection: "row", // Added for layout
-      alignItems: "center", // Added for layout
-      padding: 24, // Added padding
+      flexDirection: "column",
+      gap: 10,
+      // alignItems: "center",
+      padding: 24,
     },
     avatarCircle: {
       width: 60,
@@ -208,16 +238,62 @@ export default function Profile() {
       shadowRadius: 4,
       elevation: 2,
     },
+    // Skeleton Styles
+    skeletonContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+      paddingHorizontal: 24,
+    },
+    skeletonHeader: {
+      height: 24,
+      width: '60%',
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 4,
+    },
+    skeletonProfileCard: {
+      height: 100,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 20,
+      marginBottom: 32,
+      marginTop: 20,
+    },
+    skeletonMenuItem: {
+      height: 50,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 12,
+      marginBottom: 10,
+    },
   })
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
-        <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={styles.loadingText}>Loading profile...</Text>
+  // Profile Skeleton Component
+  const ProfileSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+      {/* Fixed Header Skeleton */}
+      <View style={styles.fixedHeader}>
+        <View style={[styles.skeletonHeader, { width: 200, height: 24 }]} />
+        <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
       </View>
-    )
+
+      <ScrollView
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: 20 }]} // Adjust padding for skeleton
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Card Skeleton */}
+        <View style={styles.skeletonProfileCard} />
+
+        {/* Menu List Skeletons */}
+        <View style={[styles.menuList, { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0 }]}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <View key={i} style={styles.skeletonMenuItem} />
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+
+  if (loading) {
+    return <ProfileSkeleton />;
   }
 
   return (
@@ -229,6 +305,11 @@ export default function Profile() {
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate("NotificationsScreen")}>
           <Ionicons name="notifications-outline" size={24} color={theme.text} />
+          {unreadCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -255,6 +336,10 @@ export default function Profile() {
             <Text style={styles.email}>{profile?.email || "email@example.com"}</Text>
           </View>
         </View>
+
+        {/* <View>
+          <Text>Quick Actions</Text>
+        </View> */}
 
         {/* Menu List */}
         <View style={styles.menuList}>
@@ -289,7 +374,7 @@ export default function Profile() {
           <MenuItem
             icon={<Ionicons name={isDarkTheme ? "sunny" : "moon"} size={22} color={theme.accent} />}
             label={isDarkTheme ? "Light Mode" : "Dark Mode"}
-            onPress={toggleTheme} // Directly use toggleTheme from useTheme hook
+            onPress={toggleTheme}
             theme={theme}
           />
           <MenuItem
@@ -317,7 +402,7 @@ export default function Profile() {
             onPress={handleLogout}
             loading={logoutLoading}
             theme={theme}
-            isLast={true} // Mark as last item to remove bottom border
+            isLast={true}
           />
         </View>
       </ScrollView>

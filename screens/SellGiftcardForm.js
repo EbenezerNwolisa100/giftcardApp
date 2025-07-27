@@ -1,547 +1,4 @@
-// import { useState } from "react"
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   TextInput,
-//   TouchableOpacity,
-//   Image,
-//   ActivityIndicator,
-//   Alert,
-//   StatusBar,
-//   Dimensions,
-//   KeyboardAvoidingView,
-//   Platform,
-//   ScrollView,
-// } from "react-native"
-// import { useRoute, useNavigation } from "@react-navigation/native"
-// import * as ImagePicker from "expo-image-picker"
-// import { supabase } from "./supabaseClient"
-// import { LinearGradient } from "expo-linear-gradient"
-// import { Ionicons } from "@expo/vector-icons"
-
-// const { width, height } = Dimensions.get("window")
-
-// export default function SellGiftcardForm() {
-//   const route = useRoute()
-//   const navigation = useNavigation()
-//   const { brand } = route.params
-//   const selectedVariant = brand.selectedVariant
-//   const [amount, setAmount] = useState("")
-//   const [cardCode, setCardCode] = useState("")
-//   const [image, setImage] = useState(null)
-//   const [uploading, setUploading] = useState(false)
-
-//   const handlePickImage = async () => {
-//     const result = await ImagePicker.launchImageLibraryAsync({
-//       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-//       quality: 0.7,
-//       allowsEditing: true,
-//       aspect: [4, 3],
-//     })
-//     if (!result.canceled && result.assets && result.assets.length > 0) {
-//       setImage(result.assets[0])
-//     }
-//   }
-
-//   const validateForm = () => {
-//     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-//       Alert.alert("Error", "Please enter a valid gift card amount.")
-//       return false
-//     }
-//     if (!cardCode.trim()) {
-//       Alert.alert("Error", "Please enter the gift card code.")
-//       return false
-//     }
-//     if (!image) {
-//       Alert.alert("Error", "Please upload an image of the gift card.")
-//       return false
-//     }
-//     return true
-//   }
-
-//   const handleSubmit = async () => {
-//     if (!validateForm()) return
-
-//     setUploading(true)
-//     let imageUrl = ""
-
-//     try {
-//       // Upload image to Supabase Storage
-//       const ext = image.uri.split(".").pop()
-//       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`
-//       const response = await fetch(image.uri)
-//       const blob = await response.blob()
-//       const { data, error } = await supabase.storage
-//         .from("giftcard-images")
-//         .upload(fileName, blob, { contentType: image.type || "image/jpeg" })
-//       if (error) throw error
-//       const { data: publicUrlData } = supabase.storage.from("giftcard-images").getPublicUrl(fileName)
-//       imageUrl = publicUrlData.publicUrl
-//     } catch (e) {
-//       setUploading(false)
-//       Alert.alert("Image Upload Error", e.message || "Failed to upload image.")
-//       return
-//     }
-
-//     // Insert transaction
-//     try {
-//       const {
-//         data: { user },
-//       } = await supabase.auth.getUser()
-//       const total = Number(amount) * Number(selectedVariant.sell_rate)
-//       const { error } = await supabase.from("giftcard_transactions").insert([
-//         {
-//           user_id: user.id,
-//           brand_id: brand.id,
-//           variant_id: selectedVariant.id,
-//           variant_name: selectedVariant.name,
-//           type: "sell",
-//           amount: Number(amount),
-//           rate: selectedVariant.sell_rate,
-//           total,
-//           status: "pending",
-//           card_code: cardCode,
-//           image_url: imageUrl,
-//         },
-//       ])
-
-//       if (error) throw error
-
-//       Alert.alert("Success", "Your gift card has been submitted for review!", [
-//         {
-//           text: "View Transactions",
-//           onPress: () => navigation.navigate("Transactions"),
-//         },
-//         {
-//           text: "OK",
-//           onPress: () => navigation.navigate("SellGiftcard"),
-//         },
-//       ])
-//     } catch (e) {
-//       Alert.alert("Error", e.message || "Failed to submit transaction.")
-//     }
-//     setUploading(false)
-//   }
-
-//   const calculatePayout = () => {
-//     if (!amount || isNaN(amount)) return 0
-//     return Number(amount) * Number(selectedVariant.sell_rate)
-//   }
-
-//   return (
-//     <View style={styles.container}>
-//       <StatusBar barStyle="light-content" backgroundColor="#0E2148" />
-
-//       <LinearGradient colors={["#0E2148", "#483AA0"]} style={styles.backgroundGradient} />
-
-//       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView}>
-//         <ScrollView
-//           contentContainerStyle={styles.scrollContainer}
-//           showsVerticalScrollIndicator={false}
-//           keyboardShouldPersistTaps="handled"
-//         >
-//           {/* Header */}
-//           <View style={styles.header}>
-//             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-//               <Ionicons name="arrow-back" size={24} color="#fff" />
-//             </TouchableOpacity>
-//             <Text style={styles.headerTitle}>Sell Gift Card</Text>
-//             <View style={styles.placeholder} />
-//           </View>
-
-//           {/* Brand & Variant Info */}
-//           <View style={styles.brandCard}>
-//             <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.brandGradient}>
-//               <View style={styles.brandImageContainer}>
-//                 {brand.image_url ? (
-//                   <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
-//                 ) : (
-//                   <View style={styles.brandImagePlaceholder}>
-//                     <Text style={styles.brandImagePlaceholderText}>{brand.name[0]}</Text>
-//                   </View>
-//                 )}
-//               </View>
-//               <View style={styles.brandInfo}>
-//                 <Text style={styles.brandName}>{brand.name}</Text>
-//                 <Text style={styles.variantName}>{selectedVariant.name}</Text>
-//                 <View style={styles.rateContainer}>
-//                   <Text style={styles.rateText}>₦{selectedVariant.sell_rate} per $1</Text>
-//                 </View>
-//               </View>
-//             </LinearGradient>
-//           </View>
-
-//           {/* Form */}
-//           <View style={styles.formContainer}>
-//             <View style={styles.inputContainer}>
-//               <Text style={styles.inputLabel}>Gift Card Amount (USD)</Text>
-//               <View style={styles.inputWrapper}>
-//                 <Ionicons name="card" size={20} color="rgba(255,255,255,0.6)" style={styles.inputIcon} />
-//                 <TextInput
-//                   style={styles.input}
-//                   placeholder="Enter amount in USD"
-//                   placeholderTextColor="rgba(255,255,255,0.6)"
-//                   keyboardType="numeric"
-//                   value={amount}
-//                   onChangeText={setAmount}
-//                 />
-//               </View>
-//               {amount && !isNaN(amount) && Number(amount) > 0 && (
-//                 <View style={styles.payoutInfo}>
-//                   <View style={styles.payoutRow}>
-//                     <Text style={styles.payoutLabel}>Amount:</Text>
-//                     <Text style={styles.payoutValue}>${Number(amount).toLocaleString()}</Text>
-//                   </View>
-//                   <View style={styles.payoutRow}>
-//                     <Text style={styles.payoutLabel}>Rate:</Text>
-//                     <Text style={styles.payoutValue}>₦{selectedVariant.sell_rate}</Text>
-//                   </View>
-//                   <View style={[styles.payoutRow, styles.totalRow]}>
-//                     <Text style={styles.totalLabel}>You'll Receive:</Text>
-//                     <Text style={styles.totalValue}>₦{calculatePayout().toLocaleString()}</Text>
-//                   </View>
-//                 </View>
-//               )}
-//             </View>
-
-//             <View style={styles.inputContainer}>
-//               <Text style={styles.inputLabel}>Gift Card Code</Text>
-//               <View style={styles.inputWrapper}>
-//                 <Ionicons name="key" size={20} color="rgba(255,255,255,0.6)" style={styles.inputIcon} />
-//                 <TextInput
-//                   style={styles.input}
-//                   placeholder="Enter gift card code"
-//                   placeholderTextColor="rgba(255,255,255,0.6)"
-//                   value={cardCode}
-//                   onChangeText={setCardCode}
-//                   multiline
-//                 />
-//               </View>
-//             </View>
-
-//             <View style={styles.inputContainer}>
-//               <Text style={styles.inputLabel}>Gift Card Image</Text>
-//               <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage} activeOpacity={0.8}>
-//                 {image ? (
-//                   <View style={styles.imagePreviewContainer}>
-//                     <Image source={{ uri: image.uri }} style={styles.previewImage} />
-//                     <View style={styles.imageOverlay}>
-//                       <Ionicons name="camera" size={24} color="#fff" />
-//                       <Text style={styles.changeImageText}>Change Image</Text>
-//                     </View>
-//                   </View>
-//                 ) : (
-//                   <View style={styles.imagePickerContent}>
-//                     <Ionicons name="camera" size={48} color="rgba(255,255,255,0.6)" />
-//                     <Text style={styles.imagePickerText}>Upload Gift Card Image</Text>
-//                     <Text style={styles.imagePickerSubtext}>Take a clear photo of your gift card</Text>
-//                   </View>
-//                 )}
-//               </TouchableOpacity>
-//             </View>
-
-//             {/* Submit Button */}
-//             <TouchableOpacity
-//               style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
-//               onPress={handleSubmit}
-//               disabled={uploading}
-//               activeOpacity={0.8}
-//             >
-//               <LinearGradient colors={["#7965C1", "#483AA0"]} style={styles.buttonGradient}>
-//                 {uploading ? (
-//                   <ActivityIndicator color="#fff" size="small" />
-//                 ) : (
-//                   <>
-//                     <Text style={styles.submitButtonText}>Submit for Review</Text>
-//                     <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.buttonIcon} />
-//                   </>
-//                 )}
-//               </LinearGradient>
-//             </TouchableOpacity>
-//           </View>
-
-//           {/* Security Notice */}
-//           <View style={styles.securityNotice}>
-//             <Ionicons name="shield-checkmark" size={16} color="#E3D095" />
-//             <Text style={styles.securityText}>Your transaction will be reviewed within 24 hours</Text>
-//           </View>
-//         </ScrollView>
-//       </KeyboardAvoidingView>
-//     </View>
-//   )
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#0E2148",
-//   },
-//   backgroundGradient: {
-//     position: "absolute",
-//     left: 0,
-//     right: 0,
-//     top: 0,
-//     height: height,
-//   },
-//   keyboardAvoidingView: {
-//     flex: 1,
-//   },
-//   scrollContainer: {
-//     flexGrow: 1,
-//     paddingHorizontal: 20,
-//   },
-//   header: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     paddingTop: 40,
-//     marginBottom: 32,
-//   },
-//   backButton: {
-//     paddingVertical: 8,
-//   },
-//   headerTitle: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//   },
-//   placeholder: {
-//     width: 40,
-//   },
-//   brandCard: {
-//     borderRadius: 20,
-//     overflow: "hidden",
-//     marginBottom: 32,
-//     elevation: 8,
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: 4 },
-//     shadowOpacity: 0.3,
-//     shadowRadius: 8,
-//   },
-//   brandGradient: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     padding: 24,
-//   },
-//   brandImageContainer: {
-//     width: 60,
-//     height: 60,
-//     borderRadius: 12,
-//     backgroundColor: "#fff",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     marginRight: 16,
-//   },
-//   brandImage: {
-//     width: 40,
-//     height: 40,
-//   },
-//   brandImagePlaceholder: {
-//     width: 40,
-//     height: 40,
-//     borderRadius: 8,
-//     backgroundColor: "#0E2148",
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   brandImagePlaceholderText: {
-//     color: "#fff",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//   },
-//   brandInfo: {
-//     flex: 1,
-//   },
-//   brandName: {
-//     color: "#fff",
-//     fontSize: 20,
-//     fontWeight: "bold",
-//     marginBottom: 4,
-//   },
-//   variantName: {
-//     color: "#E3D095",
-//     fontSize: 16,
-//     fontWeight: "600",
-//     marginBottom: 8,
-//   },
-//   rateContainer: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//   },
-//   rateText: {
-//     color: "#E3D095",
-//     fontSize: 16,
-//     fontWeight: "600",
-//   },
-//   formContainer: {
-//     gap: 24,
-//   },
-//   inputContainer: {
-//     gap: 8,
-//   },
-//   inputLabel: {
-//     color: "#fff",
-//     fontSize: 16,
-//     fontWeight: "600",
-//   },
-//   inputWrapper: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     borderRadius: 16,
-//     paddingHorizontal: 16,
-//     borderWidth: 1,
-//     borderColor: "rgba(255,255,255,0.2)",
-//   },
-//   inputIcon: {
-//     marginRight: 12,
-//   },
-//   input: {
-//     flex: 1,
-//     color: "#fff",
-//     fontSize: 16,
-//     paddingVertical: 16,
-//   },
-//   payoutInfo: {
-//     backgroundColor: "rgba(227, 208, 149, 0.1)",
-//     borderRadius: 12,
-//     padding: 16,
-//     marginTop: 12,
-//     borderWidth: 1,
-//     borderColor: "rgba(227, 208, 149, 0.3)",
-//   },
-//   payoutRow: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     alignItems: "center",
-//     marginBottom: 8,
-//   },
-//   payoutLabel: {
-//     color: "rgba(255,255,255,0.8)",
-//     fontSize: 14,
-//   },
-//   payoutValue: {
-//     color: "#fff",
-//     fontSize: 14,
-//     fontWeight: "600",
-//   },
-//   totalRow: {
-//     borderTopWidth: 1,
-//     borderTopColor: "rgba(227, 208, 149, 0.3)",
-//     paddingTop: 12,
-//     marginTop: 4,
-//     marginBottom: 0,
-//   },
-//   totalLabel: {
-//     color: "#E3D095",
-//     fontSize: 16,
-//     fontWeight: "bold",
-//   },
-//   totalValue: {
-//     color: "#E3D095",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//   },
-//   imagePicker: {
-//     backgroundColor: "rgba(255,255,255,0.1)",
-//     borderRadius: 16,
-//     borderWidth: 2,
-//     borderColor: "rgba(255,255,255,0.2)",
-//     borderStyle: "dashed",
-//     overflow: "hidden",
-//   },
-//   imagePickerContent: {
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingVertical: 40,
-//     paddingHorizontal: 20,
-//   },
-//   imagePickerText: {
-//     color: "#fff",
-//     fontSize: 16,
-//     fontWeight: "600",
-//     marginTop: 12,
-//     marginBottom: 4,
-//   },
-//   imagePickerSubtext: {
-//     color: "rgba(255,255,255,0.6)",
-//     fontSize: 14,
-//   },
-//   imagePreviewContainer: {
-//     position: "relative",
-//   },
-//   previewImage: {
-//     width: "100%",
-//     height: 200,
-//     borderRadius: 14,
-//   },
-//   imageOverlay: {
-//     position: "absolute",
-//     top: 0,
-//     left: 0,
-//     right: 0,
-//     bottom: 0,
-//     backgroundColor: "rgba(0,0,0,0.5)",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     borderRadius: 14,
-//   },
-//   changeImageText: {
-//     color: "#fff",
-//     fontSize: 14,
-//     fontWeight: "600",
-//     marginTop: 8,
-//   },
-//   submitButton: {
-//     borderRadius: 16,
-//     overflow: "hidden",
-//     marginTop: 8,
-//     elevation: 8,
-//     shadowColor: "#7965C1",
-//     shadowOffset: { width: 0, height: 4 },
-//     shadowOpacity: 0.3,
-//     shadowRadius: 8,
-//   },
-//   submitButtonDisabled: {
-//     opacity: 0.7,
-//   },
-//   buttonGradient: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingVertical: 18,
-//     paddingHorizontal: 32,
-//   },
-//   submitButtonText: {
-//     color: "#fff",
-//     fontSize: 18,
-//     fontWeight: "bold",
-//     marginRight: 8,
-//   },
-//   buttonIcon: {
-//     marginLeft: 4,
-//   },
-//   securityNotice: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingVertical: 32,
-//   },
-//   securityText: {
-//     color: "rgba(255,255,255,0.6)",
-//     fontSize: 12,
-//     marginLeft: 8,
-//     textAlign: "center",
-//   },
-// })
-
-
-
-
-"use client"
-
-import { useState } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   View,
   Text,
@@ -556,8 +13,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  RefreshControl,
 } from "react-native"
-import { useRoute, useNavigation } from "@react-navigation/native"
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native" // Import useFocusEffect
 import * as ImagePicker from "expo-image-picker"
 import { supabase } from "./supabaseClient"
 import { LinearGradient } from "expo-linear-gradient"
@@ -565,7 +23,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "./ThemeContext"
 
 const { height } = Dimensions.get("window")
-const HEADER_HEIGHT = Platform.OS === "android" ? 90 : 100 // Adjusted height for header
+const HEADER_HEIGHT_FORM = Platform.OS === "android" ? 90 : 100 // Adjusted height for header
 
 export default function SellGiftcardForm() {
   const route = useRoute()
@@ -576,7 +34,43 @@ export default function SellGiftcardForm() {
   const [cardCode, setCardCode] = useState("")
   const [image, setImage] = useState(null)
   const [uploading, setUploading] = useState(false)
-  const { theme } = useTheme()
+  const [loading, setLoading] = useState(true); // Add loading state for initial data fetch
+  const [refreshing, setRefreshing] = useState(false); // Add refreshing state
+  const [unreadCount, setUnreadCount] = useState(0); // State for unread notifications
+  const { theme, isDarkTheme } = useTheme() // Destructure isDarkTheme here
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setRefreshing(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      // Fetch unread notifications count
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+      setUnreadCount(count || 0);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      Alert.alert("Error", error.message || "Failed to load notifications.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -660,18 +154,26 @@ export default function SellGiftcardForm() {
 
       if (error) throw error
 
-      Alert.alert("Success", "Your gift card has been submitted for review!", [
-        {
-          text: "View Transactions",
-          onPress: () => navigation.navigate("Transactions"),
-        },
-        {
-          text: "OK",
-          onPress: () => navigation.navigate("SellGiftcard"),
-        },
-      ])
+      // Navigate to success screen instead of showing alert
+      navigation.navigate("TransactionSuccess", {
+        transactionType: "sell",
+        transactionData: { id: data?.[0]?.id },
+        brand: brand,
+        variant: selectedVariant,
+        quantity: 1,
+        totalAmount: total
+      })
     } catch (e) {
-      Alert.alert("Error", e.message || "Failed to submit transaction.")
+      // Navigate to failure screen instead of showing alert
+      navigation.navigate("TransactionFailure", {
+        transactionType: "sell",
+        errorMessage: e.message || "Failed to submit transaction.",
+        errorCode: e.code || "SUBMIT_ERROR",
+        brand: brand,
+        variant: selectedVariant,
+        quantity: 1,
+        totalAmount: total
+      })
     } finally {
       setUploading(false)
     }
@@ -687,68 +189,94 @@ export default function SellGiftcardForm() {
       flex: 1,
       backgroundColor: theme.background,
     },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      color: theme.text,
+      fontSize: 16,
+      marginTop: 16,
+      fontWeight: '500',
+    },
     fixedHeader: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: HEADER_HEIGHT,
       backgroundColor: theme.primary,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
+      paddingHorizontal: 18,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60,
+      paddingBottom: 20,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
       zIndex: 10,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : 50,
     },
     backButton: {
-      paddingVertical: 8,
+      padding: 8,
     },
     headerTitle: {
-      color: theme.textContrast,
-      fontSize: 20,
+      color: theme.text,
+      fontSize: 24,
       fontWeight: "bold",
+      flex: 1,
+      textAlign: "center",
+      marginLeft: -40, // Counteract back button width to center title
     },
-    placeholder: {
-      width: 40,
+    notificationButton: {
+      position: "relative",
+      padding: 4,
+    },
+    notificationBadge: {
+      position: "absolute",
+      top: -2,
+      right: -2,
+      backgroundColor: theme.error,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: theme.primary,
+    },
+    notificationBadgeText: {
+      color: theme.text,
+      fontSize: 10,
+      fontWeight: "bold",
     },
     keyboardAvoidingView: {
       flex: 1,
-      paddingTop: HEADER_HEIGHT, // Offset for the fixed header
     },
     scrollContainer: {
       flexGrow: 1,
-      paddingHorizontal: 20,
-      paddingBottom: 40,
+      paddingHorizontal: 18,
+      paddingBottom: Platform.OS === "ios" ? 85 + 20 : 70 + 20, // Account for tab bar height
+      paddingTop: 0, // Space after fixed header
     },
     brandCard: {
+      backgroundColor: theme.surface,
       borderRadius: 20,
       overflow: "hidden",
       marginBottom: 32,
-      elevation: 8,
+      elevation: 5,
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.2,
       shadowRadius: 8,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    brandGradient: {
       flexDirection: "row",
       alignItems: "center",
       padding: 24,
     },
     brandImageContainer: {
-      width: 60,
-      height: 60,
+      width: 130,
+      height: 100,
       borderRadius: 12,
       backgroundColor: theme.background,
       justifyContent: "center",
@@ -756,19 +284,19 @@ export default function SellGiftcardForm() {
       marginRight: 16,
     },
     brandImage: {
-      width: 40,
-      height: 40,
+      width: 100,
+      height: 80,
     },
     brandImagePlaceholder: {
-      width: 40,
-      height: 40,
+      width: 60,
+      height: 45,
       borderRadius: 8,
-      backgroundColor: theme.primary,
+      backgroundColor: theme.accent,
       justifyContent: "center",
       alignItems: "center",
     },
     brandImagePlaceholderText: {
-      color: theme.textContrast,
+      color: theme.primary,
       fontSize: 18,
       fontWeight: "bold",
     },
@@ -810,7 +338,7 @@ export default function SellGiftcardForm() {
     inputWrapper: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.card,
+      backgroundColor: theme.surface,
       borderRadius: 16,
       paddingHorizontal: 16,
       borderWidth: 1,
@@ -826,12 +354,12 @@ export default function SellGiftcardForm() {
       paddingVertical: 16,
     },
     payoutInfo: {
-      backgroundColor: theme.warningBackground,
+      backgroundColor: theme.warning + "1A", // Tint of warning
       borderRadius: 12,
       padding: 16,
       marginTop: 12,
       borderWidth: 1,
-      borderColor: theme.warningBorder,
+      borderColor: theme.warning, // Use warning for border
     },
     payoutRow: {
       flexDirection: "row",
@@ -850,7 +378,7 @@ export default function SellGiftcardForm() {
     },
     totalRow: {
       borderTopWidth: 1,
-      borderTopColor: theme.warningBorder,
+      borderTopColor: theme.warning, // Use warning for border
       paddingTop: 12,
       marginTop: 4,
       marginBottom: 0,
@@ -866,7 +394,7 @@ export default function SellGiftcardForm() {
       fontWeight: "bold",
     },
     imagePicker: {
-      backgroundColor: theme.card,
+      backgroundColor: theme.surface,
       borderRadius: 16,
       borderWidth: 2,
       borderColor: theme.border,
@@ -936,7 +464,7 @@ export default function SellGiftcardForm() {
       paddingHorizontal: 32,
     },
     submitButtonText: {
-      color: theme.textContrast,
+      color: theme.primary,
       fontSize: 18,
       fontWeight: "bold",
       marginRight: 8,
@@ -956,43 +484,150 @@ export default function SellGiftcardForm() {
       marginLeft: 8,
       textAlign: "center",
     },
+    // Skeleton Styles
+    skeletonContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    skeletonFixedHeader: {
+      height: HEADER_HEIGHT_FORM,
+      backgroundColor: theme.primary,
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+      zIndex: 10,
+    },
+    skeletonBrandCard: {
+      height: 120,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 20,
+      marginHorizontal: 24,
+      marginTop: 20,
+      marginBottom: 32,
+    },
+    skeletonInputContainer: {
+      height: 100, // Approximate height for input + label
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 16,
+      marginBottom: 24,
+      marginHorizontal: 24,
+    },
+    skeletonImagePicker: {
+      height: 200,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 16,
+      marginBottom: 24,
+      marginHorizontal: 24,
+    },
+    skeletonSubmitButton: {
+      height: 60,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 16,
+      marginBottom: 24,
+      marginHorizontal: 24,
+    },
+    skeletonSecurityNotice: {
+      height: 40,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 12,
+      marginHorizontal: 24,
+    },
   })
+
+  // SellGiftcardForm Skeleton Component
+  const SellGiftcardFormSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+      {/* Fixed Header Skeleton */}
+      <View style={styles.skeletonFixedHeader}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60, paddingBottom: 20, width: '100%' }}>
+          <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} /> {/* Back button placeholder */}
+          <View style={[styles.headerTitle, { backgroundColor: theme.surfaceSecondary, width: 180, height: 24 }]} /> {/* Title placeholder */}
+          <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.scrollContainer, { paddingTop: HEADER_HEIGHT_FORM + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Brand & Variant Info Skeleton */}
+        <View style={styles.skeletonBrandCard} />
+
+        {/* Form Skeletons */}
+        <View style={styles.skeletonInputContainer} />
+        <View style={styles.skeletonInputContainer} />
+        <View style={styles.skeletonImagePicker} />
+
+        {/* Submit Button Skeleton */}
+        <View style={styles.skeletonSubmitButton} />
+
+        {/* Security Notice Skeleton */}
+        <View style={styles.skeletonSecurityNotice} />
+      </ScrollView>
+    </View>
+  );
+
+  if (loading) {
+    return <SellGiftcardFormSkeleton />;
+  }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle={theme.statusBar} backgroundColor={theme.primary} />
+      <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
       {/* Fixed Header */}
       <View style={styles.fixedHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.textContrast} />
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Sell Gift Card</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate("NotificationsScreen")}
+          style={styles.notificationButton}
+        >
+          <Ionicons name="notifications-outline" size={24} color={theme.text} />
+          {unreadCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView}>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={fetchData}
+              tintColor={theme.accent}
+              colors={[theme.accent]}
+              progressBackgroundColor={theme.surface}
+            />
+          }
         >
           {/* Brand & Variant Info */}
           <View style={styles.brandCard}>
-            <View style={styles.brandGradient}>
-              <View style={styles.brandImageContainer}>
-                {brand.image_url ? (
-                  <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
-                ) : (
-                  <View style={styles.brandImagePlaceholder}>
-                    <Text style={styles.brandImagePlaceholderText}>{brand.name[0]}</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.brandInfo}>
-                <Text style={styles.brandName}>{brand.name}</Text>
-                <Text style={styles.variantName}>{selectedVariant.name}</Text>
-                <View style={styles.rateContainer}>
-                  <Text style={styles.rateText}>₦{selectedVariant.sell_rate} per $1</Text>
+            <View style={styles.brandImageContainer}>
+              {brand.image_url ? (
+                <Image source={{ uri: brand.image_url }} style={styles.brandImage} resizeMode="contain" />
+              ) : (
+                <View style={styles.brandImagePlaceholder}>
+                  <Text style={styles.brandImagePlaceholderText}>{brand.name[0]}</Text>
                 </View>
+              )}
+            </View>
+            <View style={styles.brandInfo}>
+              <Text style={styles.brandName}>{brand.name}</Text>
+              <Text style={styles.variantName}>{selectedVariant.name}</Text>
+              <View style={styles.rateContainer}>
+                <Text style={styles.rateText}>₦{selectedVariant.sell_rate} per $1</Text>
               </View>
             </View>
           </View>
@@ -1069,13 +704,13 @@ export default function SellGiftcardForm() {
               disabled={uploading}
               activeOpacity={0.8}
             >
-              <LinearGradient colors={[theme.accent, theme.primary]} style={styles.buttonGradient}>
+              <LinearGradient colors={[theme.accent, theme.accent]} style={styles.buttonGradient}>
                 {uploading ? (
                   <ActivityIndicator color={theme.textContrast} size="small" />
                 ) : (
                   <>
                     <Text style={styles.submitButtonText}>Submit for Review</Text>
-                    <Ionicons name="arrow-forward" size={20} color={theme.textContrast} style={styles.buttonIcon} />
+                    <Ionicons name="arrow-forward" size={20} color={theme.primary} style={styles.buttonIcon} />
                   </>
                 )}
               </LinearGradient>
