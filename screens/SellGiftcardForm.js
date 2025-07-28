@@ -354,12 +354,12 @@ export default function SellGiftcardForm() {
       paddingVertical: 16,
     },
     payoutInfo: {
-      backgroundColor: theme.warning + "1A", // Tint of warning
+      backgroundColor: theme.surface, // Tint of warning
       borderRadius: 12,
       padding: 16,
       marginTop: 12,
       borderWidth: 1,
-      borderColor: theme.warning, // Use warning for border
+      borderColor: theme.secondary, // Use warning for border
     },
     payoutRow: {
       flexDirection: "row",
@@ -378,18 +378,18 @@ export default function SellGiftcardForm() {
     },
     totalRow: {
       borderTopWidth: 1,
-      borderTopColor: theme.warning, // Use warning for border
+      borderTopColor: theme.secondary, // Use warning for border
       paddingTop: 12,
       marginTop: 4,
       marginBottom: 0,
     },
     totalLabel: {
-      color: theme.warning,
+      color: theme.text,
       fontSize: 16,
       fontWeight: "bold",
     },
     totalValue: {
-      color: theme.warning,
+      color: theme.text,
       fontSize: 18,
       fontWeight: "bold",
     },
@@ -580,22 +580,38 @@ export default function SellGiftcardForm() {
     <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
       {/* Fixed Header */}
-      <View style={styles.fixedHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <View
+        style={{
+          // backgroundColor: theme.primary,
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          // elevation: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            marginLeft: 0,
+            padding: 6,
+            borderRadius: 6,
+          }}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sell Gift Card</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("NotificationsScreen")}
-          style={styles.notificationButton}
-        >
-          <Ionicons name="notifications-outline" size={24} color={theme.text} />
-          {unreadCount > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold' }}>Complete Purchase</Text>
+        <View style={{ width: 32, height: 32 }} />
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView}>
         <ScrollView

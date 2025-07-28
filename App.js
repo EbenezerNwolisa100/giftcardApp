@@ -35,6 +35,9 @@ import SellGiftcardVariants from "./screens/SellGiftcardVariants"
 import BuyGiftcardVariants from "./screens/BuyGiftcardVariants"
 import TransactionSuccess from "./screens/TransactionSuccess"
 import TransactionFailure from "./screens/TransactionFailure"
+import WithdrawalSuccess from "./screens/WithdrawalSuccess"
+import WithdrawalFailure from "./screens/WithdrawalFailure"
+import FundingResult from "./screens/FundingResult"
 import { ThemeProvider, useTheme } from "./screens/ThemeContext" // Import useTheme
 
 const Stack = createNativeStackNavigator()
@@ -247,6 +250,9 @@ export default function App() {
               <Stack.Screen name="BuyGiftcard" component={BuyGiftcard} />
               <Stack.Screen name="TransactionSuccess" component={TransactionSuccess} />
               <Stack.Screen name="TransactionFailure" component={TransactionFailure} />
+              <Stack.Screen name="WithdrawalSuccess" component={WithdrawalSuccess} />
+              <Stack.Screen name="WithdrawalFailure" component={WithdrawalFailure} />
+              <Stack.Screen name="FundingResult" component={FundingResult} />
             </Stack.Navigator>
           ) : (
             <AuthStack />

@@ -57,6 +57,8 @@ export default function TransactionDetails({ route, navigation }) {
     wallet: "Wallet",
     paystack: "Paystack",
     manual_transfer: "Manual Transfer",
+    bank_transfer: "Bank Transfer",
+    card: "Card Payment",
   }
 
   const getStatusIcon = (status) => {
@@ -336,6 +338,21 @@ export default function TransactionDetails({ route, navigation }) {
               {transaction.paystackRef &&
                 renderDetailRow("Paystack Reference", transaction.paystackRef, true, "Paystack Reference")}
               {transaction.proofUrl && renderDetailRow("Proof of Payment", "Uploaded")}
+            </>
+          )}
+
+          {/* Wallet Transaction Specific Details */}
+          {(getActualTxType() === "fund" || getActualTxType() === "withdrawal" || getActualTxType() === "refund" || getActualTxType() === "credit" || getActualTxType() === "debit") && (
+            <>
+              {transaction.paymentMethod &&
+                renderDetailRow(
+                  "Payment Method",
+                  PAYMENT_METHOD_LABELS[transaction.paymentMethod] || transaction.paymentMethod,
+                )}
+              {transaction.reference &&
+                renderDetailRow("Reference", transaction.reference, true, "Reference")}
+              {transaction.description &&
+                renderDetailRow("Description", transaction.description)}
             </>
           )}
 

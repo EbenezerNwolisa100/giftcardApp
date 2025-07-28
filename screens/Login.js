@@ -95,8 +95,8 @@ export default function Login({ navigation }) {
       paddingBottom: 40, // Add some padding at the bottom for scroll
     },
     header: {
-      paddingTop: 60,
-      marginBottom: 30, // Adjusted margin
+      paddingTop: Platform.OS === 'ios' ? 60 : 40,
+      marginBottom: 20, // Reduced margin for better spacing
       flexDirection: 'row', // For back button alignment
       alignItems: 'center',
     },
@@ -106,29 +106,31 @@ export default function Login({ navigation }) {
     },
     logoSection: {
       alignItems: "center",
-      marginBottom: 40, // Adjusted margin
+      marginBottom: 32, // Adjusted margin for better balance
       width: '100%', // Ensure it takes full width for centering
     },
     logoImage: {
-      width: 90, // Slightly smaller logo than homepage, but still prominent
-      height: 90,
-      borderRadius: 22,
-      marginBottom: 20, // Space below the logo
+      width: 120, // Larger, more prominent logo
+      height: 120,
+      borderRadius: 30, // More rounded corners
+      marginBottom: 0, // No margin since we have a container
     },
     title: {
-      fontSize: 34, // Larger title
-      fontWeight: "bold",
+      fontSize: 36, // Even larger title for better impact
+      fontWeight: "800", // Bolder font weight
       color: theme.text,
-      marginBottom: 10, // Space below title
+      marginBottom: 12, // More space below title
       textAlign: 'center',
+      letterSpacing: -0.5, // Tighter letter spacing for modern look
     },
     subtitle: {
-      fontSize: 16,
+      fontSize: 17, // Slightly larger subtitle
       color: theme.textSecondary,
       textAlign: "center",
-      lineHeight: 24,
+      lineHeight: 26, // Better line height for readability
       paddingHorizontal: 20,
       maxWidth: 350, // Constrain width for better readability
+      fontWeight: "400", // Medium weight for better readability
     },
     formContainer: {
       width: "100%",
@@ -142,11 +144,16 @@ export default function Login({ navigation }) {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.surfaceSecondary,
-      borderRadius: 12, // More rounded input fields
-      paddingHorizontal: 16,
-      borderWidth: 1, // Thinner border for sleekness
+      borderRadius: 16, // More rounded input fields for modern look
+      paddingHorizontal: 18, // Slightly more padding
+      borderWidth: 1.5, // Slightly thicker border for better definition
       borderColor: theme.border,
-      height: 56, // Fixed height for inputs
+      height: 60, // Slightly taller inputs for better touch targets
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
     inputIcon: {
       marginRight: 12,
@@ -171,17 +178,19 @@ export default function Login({ navigation }) {
       fontWeight: "600",
     },
     loginButton: {
-      borderRadius: 12, // Match input field rounding
+      borderRadius: 16, // Match input field rounding
       backgroundColor: theme.accent,
-      paddingVertical: 18,
+      paddingVertical: 20, // Slightly more padding for better touch target
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 10,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 16,
+      elevation: 12,
+      borderWidth: 1,
+      borderColor: theme.accent + "20", // Subtle border
     },
     loginButtonDisabled: {
       opacity: 0.6, // More distinct disabled state
@@ -248,11 +257,22 @@ export default function Login({ navigation }) {
 
           {/* Logo and Title */}
           <View style={styles.logoSection}>
-            <Image
-              source={isDarkTheme ? lightLogo : darkLogo}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <View style={{
+              backgroundColor: theme.surfaceSecondary,
+              borderRadius: 35,
+              padding: 20,
+              shadowColor: theme.shadow,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            }}>
+              <Image
+                source={isDarkTheme ? lightLogo : darkLogo}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to your account to continue trading</Text>
           </View>

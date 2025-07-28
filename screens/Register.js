@@ -522,8 +522,8 @@ export default function Register({ navigation }) {
       paddingBottom: 40, // Add some padding at the bottom for scroll
     },
     header: {
-      paddingTop: 60,
-      marginBottom: 30,
+      paddingTop: Platform.OS === 'ios' ? 60 : 40,
+      marginBottom: 20, // Reduced margin for better spacing
       flexDirection: 'row',
       alignItems: 'center',
     },
@@ -533,29 +533,31 @@ export default function Register({ navigation }) {
     },
     logoSection: {
       alignItems: "center",
-      marginBottom: 40,
+      marginBottom: 32, // Adjusted margin for better balance
       width: '100%',
     },
     logoImage: {
-      width: 90,
-      height: 90,
-      borderRadius: 22,
-      marginBottom: 20,
+      width: 120, // Larger, more prominent logo
+      height: 120,
+      borderRadius: 30, // More rounded corners
+      marginBottom: 0, // No margin since we have a container
     },
     title: {
-      fontSize: 34,
-      fontWeight: "bold",
+      fontSize: 36, // Even larger title for better impact
+      fontWeight: "800", // Bolder font weight
       color: theme.text,
-      marginBottom: 10,
+      marginBottom: 12, // More space below title
       textAlign: 'center',
+      letterSpacing: -0.5, // Tighter letter spacing for modern look
     },
     subtitle: {
-      fontSize: 16,
+      fontSize: 17, // Slightly larger subtitle
       color: theme.textSecondary,
       textAlign: "center",
-      lineHeight: 24,
+      lineHeight: 26, // Better line height for readability
       paddingHorizontal: 20,
       maxWidth: 350,
+      fontWeight: "400", // Medium weight for better readability
     },
     formContainer: {
       width: "100%",
@@ -569,11 +571,16 @@ export default function Register({ navigation }) {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.surfaceSecondary,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      borderWidth: 1,
+      borderRadius: 16, // More rounded input fields for modern look
+      paddingHorizontal: 18, // Slightly more padding
+      borderWidth: 1.5, // Slightly thicker border for better definition
       borderColor: theme.border,
-      height: 56,
+      height: 60, // Slightly taller inputs for better touch targets
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
     inputIcon: {
       marginRight: 12,
@@ -591,38 +598,47 @@ export default function Register({ navigation }) {
     passwordRequirements: {
       marginBottom: 24,
       paddingHorizontal: 10,
+      backgroundColor: theme.surfaceSecondary,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     requirementsTitle: {
       color: theme.textSecondary,
-      fontSize: 14,
-      marginBottom: 8,
+      fontSize: 15,
+      marginBottom: 12,
       fontWeight: "600",
     },
     requirement: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 4,
+      marginBottom: 8,
+      paddingVertical: 2,
     },
     requirementText: {
       color: theme.textMuted,
       fontSize: 14,
-      marginLeft: 8,
+      marginLeft: 10,
+      fontWeight: "500",
     },
     requirementMet: {
       color: theme.success,
     },
     registerButton: {
-      borderRadius: 12,
+      borderRadius: 16, // Match input field rounding
       backgroundColor: theme.accent,
-      paddingVertical: 18,
+      paddingVertical: 20, // Slightly more padding for better touch target
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 10,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.25,
+      shadowRadius: 16,
+      elevation: 12,
+      borderWidth: 1,
+      borderColor: theme.accent + "20", // Subtle border
     },
     registerButtonDisabled: {
       opacity: 0.6,
@@ -694,11 +710,22 @@ export default function Register({ navigation }) {
 
           {/* Logo and Title */}
           <View style={styles.logoSection}>
-            <Image
-              source={isDarkTheme ? lightLogo : darkLogo}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <View style={{
+              backgroundColor: theme.surfaceSecondary,
+              borderRadius: 35,
+              padding: 20,
+              shadowColor: theme.shadow,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            }}>
+              <Image
+                source={isDarkTheme ? lightLogo : darkLogo}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join thousands of users trading gift cards securely</Text>
           </View>

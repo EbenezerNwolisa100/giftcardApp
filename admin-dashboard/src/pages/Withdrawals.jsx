@@ -133,6 +133,20 @@ const Withdrawals = () => {
         .eq('id', selectedW.id);
       if (withdrawalError) throw withdrawalError;
 
+      // Update corresponding wallet transaction status
+      const { error: walletTxError } = await supabase
+        .from('wallet_transactions')
+        .update({ status })
+        .eq('user_id', selectedW.user_id)
+        .eq('type', 'withdrawal')
+        .eq('amount', selectedW.amount)
+        .gte('created_at', new Date(selectedW.created_at).toISOString())
+        .lte('created_at', new Date(selectedW.created_at).toISOString());
+      if (walletTxError) {
+        console.error('Error updating wallet transaction:', walletTxError);
+        // Don't throw error here as the main withdrawal update succeeded
+      }
+
       // If withdrawal is rejected, refund the money to user's wallet
       if (status === 'rejected') {
         // Get current user balance
@@ -155,6 +169,24 @@ const Withdrawals = () => {
           .eq('id', selectedW.user_id);
         
         if (balanceError) throw balanceError;
+
+        // Create refund wallet transaction
+        const { error: refundTxError } = await supabase
+          .from('wallet_transactions')
+          .insert({
+            user_id: selectedW.user_id,
+            type: 'refund',
+            amount: Number(selectedW.amount),
+            status: 'completed',
+            description: `Withdrawal refund - ${updateObj.rejection_reason}`,
+            payment_method: 'refund',
+            reference: `REF-${Date.now()}`,
+          });
+        
+        if (refundTxError) {
+          console.error('Error creating refund transaction:', refundTxError);
+          // Don't throw error here as the main refund succeeded
+        }
       }
 
       setActionSuccess(`Withdrawal ${status}.${status === 'rejected' ? ' Amount has been refunded to user wallet.' : ''}`);
