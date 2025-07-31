@@ -232,10 +232,10 @@ export default function TransactionDetails({ route, navigation }) {
                     <Image source={{ uri: transaction.image_url }} style={styles.brandImage} resizeMode="contain" />
                   ) : (
                   <View style={[styles.transactionIconBg, { backgroundColor: TYPE_COLORS[getActualTxType()] }]}>
-                    <Text style={[styles.brandInitial, { color: theme.textContrast }]}>
-                      {(transaction.brand_name || "?")[0]}
-                    </Text>
-                  </View>
+                      <Text style={[styles.brandInitial, { color: theme.textContrast }]}>
+                        {(transaction.brand_name || "?")[0]}
+                      </Text>
+                    </View>
                   )}
                 </View>
               )}

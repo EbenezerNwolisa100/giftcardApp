@@ -180,6 +180,32 @@ const Users = () => {
     setActionLoading(false)
   }
 
+  const handleBalanceCorrection = async (newBalance) => {
+    setActionLoading(true)
+    setActionError("")
+    setActionSuccess("")
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ balance: newBalance })
+        .eq("id", selectedUser.id)
+      if (error) throw error
+      setActionSuccess(`Balance corrected to ₦${newBalance.toLocaleString()}`)
+      // Refresh user details
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", selectedUser.id)
+        .single()
+      if (profile) {
+        setUserDetails(profile)
+      }
+    } catch (err) {
+      setActionError("Failed to correct balance: " + (err?.message || ""))
+    }
+    setActionLoading(false)
+  }
+
   // Helper to get brand name for transactions
   const getTransactionBrandName = (tx) => {
     if (tx.type === "sell") {
@@ -475,6 +501,18 @@ const Users = () => {
                         onClick={handleResetPassword}
                       >
                         Reset Password
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-info"
+                        disabled={actionLoading}
+                        onClick={() => {
+                          const newBalance = prompt(`Current balance: ₦${Number(userDetails.balance).toLocaleString()}\nEnter correct balance:`, userDetails.balance);
+                          if (newBalance && !isNaN(newBalance)) {
+                            handleBalanceCorrection(Number(newBalance));
+                          }
+                        }}
+                      >
+                        Correct Balance
                       </button>
                     </div>
                     {actionError && <div className="alert alert-danger py-2">{actionError}</div>}

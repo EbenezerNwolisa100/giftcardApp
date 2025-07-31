@@ -294,7 +294,7 @@ export default function HottestRatesScreen() {
     scrollContainer: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingBottom: 32,
+      paddingBottom: 20, // Reduced since tab bar is now relative positioned
       paddingTop: 0, // Adjusted padding to clear fixed header
     },
     tabContainer: {
@@ -508,87 +508,106 @@ export default function HottestRatesScreen() {
       fontSize: 16,
     },
     // Skeleton Styles
-    skeletonContainer: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    skeletonFixedHeader: {
-      height: HEADER_HEIGHT_CALCULATED,
-      backgroundColor: theme.primary,
-      borderBottomLeftRadius: 20,
-      borderBottomRightRadius: 20,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 5 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 8,
-      zIndex: 10,
-    },
-    skeletonTabContainer: {
-      height: 50,
+    skeletonHeader: {
       backgroundColor: theme.surfaceSecondary,
-      borderRadius: 16,
-      marginHorizontal: 24,
-      marginTop: 20,
-      marginBottom: 24,
-    },
-    skeletonInputGroup: {
-      height: 60,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 12,
-      marginBottom: 20,
-    },
-    skeletonPayoutContainer: {
-      height: 120,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 16,
-      marginTop: 30,
-      marginBottom: 30,
-    },
-    skeletonButton: {
-      height: 50,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 12,
-      marginBottom: 20,
+      borderRadius: 4,
     },
   })
 
-  // HottestRatesScreen Skeleton Component
-  const HottestRatesSkeleton = () => (
-    <View style={styles.skeletonContainer}>
+  // RateCalculator Skeleton Component
+  const RateCalculatorSkeleton = () => (
+    <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+
       {/* Fixed Header Skeleton */}
-      <View style={styles.skeletonFixedHeader}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60, paddingBottom: 20 }}>
-          <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} /> {/* Back button placeholder */}
-          <View style={[styles.skeletonHeader, { width: 180, height: 24, marginLeft: -24 }]} /> {/* Title placeholder */}
-          <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
-        </View>
+      <View
+        style={{
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          marginBottom: 20,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} />
+        <View style={{ width: 140, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+        <View style={{ width: 32, height: 32 }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContainer, { paddingTop: HEADER_HEIGHT_CALCULATED + 20 }]}
+        contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Tab Container Skeleton */}
-        <View style={styles.skeletonTabContainer} />
+        <View style={styles.tabContainer}>
+          <View style={[styles.tab, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ width: 80, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+          </View>
+          <View style={[styles.tab, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ width: 80, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+          </View>
+        </View>
 
         {/* Calculator Section Skeletons */}
-        <View style={{ paddingHorizontal: 24 }}>
+        <View style={styles.calculatorContainer}>
           <View style={[styles.skeletonHeader, { width: 200, height: 20, marginBottom: 20, alignSelf: 'center' }]} />
-          <View style={styles.skeletonInputGroup} />
-          <View style={styles.skeletonInputGroup} />
-          <View style={styles.skeletonInputGroup} />
-          <View style={styles.skeletonPayoutContainer} />
-          <View style={styles.skeletonButton} />
-          <View style={styles.skeletonButton} />
+          
+          {/* Brand Selector Skeleton */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.skeletonHeader, { width: 100, height: 16, marginBottom: 8 }]} />
+            <View style={[styles.dropdownButton, { backgroundColor: theme.surfaceSecondary }]}>
+              <View style={{ width: 120, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, flex: 1 }} />
+              <View style={{ width: 20, height: 20, backgroundColor: theme.surfaceSecondary, borderRadius: 10 }} />
+            </View>
+          </View>
+          
+          {/* Variant Selector Skeleton */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.skeletonHeader, { width: 100, height: 16, marginBottom: 8 }]} />
+            <View style={[styles.dropdownButton, { backgroundColor: theme.surfaceSecondary }]}>
+              <View style={{ width: 120, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, flex: 1 }} />
+              <View style={{ width: 20, height: 20, backgroundColor: theme.surfaceSecondary, borderRadius: 10 }} />
+            </View>
+          </View>
+          
+          {/* Amount Input Skeleton */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.skeletonHeader, { width: 100, height: 16, marginBottom: 8 }]} />
+            <View style={[styles.textInput, { backgroundColor: theme.surfaceSecondary }]} />
+          </View>
+          
+          {/* Payout Container Skeleton */}
+          <View style={[styles.payoutContainer, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ width: 150, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 10 }} />
+            <View style={{ width: 120, height: 36, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+          </View>
+          
+          {/* Clear Button Skeleton */}
+          <View style={[styles.clearButton, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ width: 120, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+          </View>
+          
+          {/* Proceed Button Skeleton */}
+          <View style={[styles.proceedButton, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ width: 140, height: 18, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 
   if (loading) {
-    return <HottestRatesSkeleton />;
+    return <RateCalculatorSkeleton />;
   }
 
   return (

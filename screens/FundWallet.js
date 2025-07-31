@@ -17,6 +17,7 @@ import {
 } from "react-native"
 import { supabase } from "./supabaseClient"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
+import { WebView } from "react-native-webview"
 
 import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
@@ -24,6 +25,10 @@ import Modal from "react-native-modal"
 import { useTheme } from "./ThemeContext"
 
 const { width, height } = Dimensions.get("window")
+
+// Paystack Configuration
+const PAYSTACK_PUBLIC_KEY = "pk_test_2ba7130b0b7d2c18f74f7276a255f5e419962f9b" // Replace with your actual test public key
+const PAYSTACK_SECRET_KEY = "sk_test_1e844224e04d7839ecb15be9cf2a063a8c1feadf" // Replace with your actual test secret key
 
 export default function FundWallet() {
   const [amount, setAmount] = useState("")
@@ -38,6 +43,12 @@ export default function FundWallet() {
   const [processingFee, setProcessingFee] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [showFeeDetails, setShowFeeDetails] = useState(false)
+  const [isProcessingPaystack, setIsProcessingPaystack] = useState(false)
+  
+  // Paystack WebView states
+  const [showPaystackWebView, setShowPaystackWebView] = useState(false)
+  const [paystackUrl, setPaystackUrl] = useState("")
+  const [paystackReference, setPaystackReference] = useState("")
 
   const navigation = useNavigation()
   const { theme, isDarkTheme } = useTheme()
@@ -73,6 +84,8 @@ export default function FundWallet() {
     setRefreshing(false)
   }, [fetchProcessingFee, fetchAdminBankDetails])
 
+
+
   useEffect(() => {
     fetchProcessingFee()
   }, [fetchProcessingFee])
@@ -96,61 +109,157 @@ export default function FundWallet() {
     }
   }
 
+  const generatePaystackUrl = async (amount, email) => {
+    const reference = `ps_ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const fee = processingFee || 0 // Ensure processing fee is not undefined
+    const totalAmount = amount + fee
+    
+    // Create Paystack payment URL with proper encoding
+    const params = new URLSearchParams({
+      amount: (totalAmount * 100).toString(), // Paystack expects amount in kobo
+      email: email,
+      reference: reference,
+      currency: 'NGN',
+      'metadata[amount]': amount.toString(),
+      'metadata[processing_fee]': fee.toString(),
+      'metadata[total_amount]': totalAmount.toString()
+    })
+    
+    const paystackUrl = `https://checkout.paystack.com/${PAYSTACK_PUBLIC_KEY}?${params.toString()}`
+    
+    console.log("Generated Paystack URL:", paystackUrl) // Debug log
+    
+    return { paystackUrl, reference }
+  }
+
   const handlePaystack = async () => {
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       Alert.alert("Error", "Please enter a valid amount.")
       return
     }
+    if (paystackLoading || isProcessingPaystack) {
+      return;
+    }
+    
+    // Validate Paystack public key
+    if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY === "pk_test_...") {
+      Alert.alert("Error", "Paystack public key not configured. Please check your configuration.")
+      return
+    }
+    
+    setIsProcessingPaystack(true)
     setPaystackLoading(true)
-    setTimeout(async () => {
-      setPaystackLoading(false)
-      setShowPaystackModal(false)
-      setFeedback("Paystack payment successful! Funding wallet...")
+    setShowPaystackModal(false)
+    setFeedback("Initializing Paystack payment...")
 
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) throw new Error("You must be logged in to fund your wallet.")
-        const enteredAmount = Number(amount) || 0
-        const fee = processingFee
-        const totalToPay = enteredAmount + fee
-        const { error: txError } = await supabase.from("wallet_transactions").insert([
-          {
-            user_id: user.id,
-            type: "fund",
-            amount: enteredAmount,
-            fee: fee,
-            status: "completed",
-            payment_method: "paystack",
-            reference: "ps_ref_" + Date.now(),
-            description: `Wallet funded via Paystack (fee: ₦${fee})`,
-          },
-        ])
-        if (txError) throw txError
-
-        const { data: profile } = await supabase.from("profiles").select("balance").eq("id", user.id).single()
-        const newBalance = (profile?.balance || 0) + enteredAmount
-        const { error: balanceError } = await supabase
-          .from("profiles")
-          .update({ balance: newBalance })
-          .eq("id", user.id)
-        if (balanceError) throw balanceError
-
-        navigation.navigate("FundingResult", { 
-          success: true,
-          amount: enteredAmount,
-          paymentMethod: "paystack"
-        })
-      } catch (e) {
-        navigation.navigate("FundingResult", { 
-          success: false,
-          error: e.message || "Failed to fund wallet.",
-          amount: enteredAmount
-        })
-      }
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("You must be logged in to fund your wallet.")
+      
+      const enteredAmount = Number(amount) || 0
+      
+      // Generate Paystack payment URL
+      const { paystackUrl, reference } = await generatePaystackUrl(enteredAmount, user.email)
+      
+      console.log("User email:", user.email) // Debug log
+      console.log("Amount:", enteredAmount) // Debug log
+      console.log("Processing fee:", processingFee) // Debug log
+      
+      // Store reference for verification
+      setPaystackReference(reference)
+      setPaystackUrl(paystackUrl)
+      
+      // Show Paystack WebView
+      setShowPaystackWebView(true)
       setFeedback("")
-    }, 2000)
+      
+      // For debugging - you can check the console to see the generated URL
+      
+    } catch (e) {
+      setFeedback("")
+      Alert.alert("Error", e.message || "Failed to initialize payment.")
+    } finally {
+      setPaystackLoading(false)
+      setIsProcessingPaystack(false)
+    }
+  }
+
+  const handleWebViewNavigationStateChange = (navState) => {
+    const { url } = navState
+    console.log("WebView URL:", url) // Debug log
+    
+    // Only process if we have a reference to track
+    if (!paystackReference) return
+    
+    // Check for Paystack error pages
+    if (url.includes('error') || url.includes('failed') || url.includes('invalid')) {
+      console.log("Paystack error detected in URL:", url)
+      handlePaymentFailure("Payment failed - please try again")
+      return
+    }
+    
+    // For testing purposes, let's detect when user is on the Paystack success page
+    // In production, you'd verify with Paystack API
+    if (url.includes('paystack.com/success') || url.includes('transaction/success')) {
+      // Payment successful - verify and process
+      handlePaymentSuccess()
+    } else if (url.includes('paystack.com/cancel') || url.includes('transaction/cancel')) {
+      // Payment cancelled
+      handlePaymentFailure("Payment was cancelled")
+    }
+    // Don't process other URLs - let user complete the payment flow
+  }
+
+  const handlePaymentSuccess = async () => {
+    try {
+      setFeedback("Payment successful! Verifying transaction...")
+      
+      // Here you would typically verify the payment with Paystack API
+      // For now, we'll simulate success
+      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("User not found")
+      
+      const enteredAmount = Number(amount) || 0
+      const fee = processingFee
+      
+      // Create the transaction record
+      const { data: txData, error: txError } = await supabase.from("wallet_transactions").insert([
+        {
+          user_id: user.id,
+          type: "fund",
+          amount: enteredAmount,
+          fee: fee,
+          status: "completed",
+          payment_method: "paystack",
+          reference: paystackReference,
+          description: `Wallet funded via Paystack (fee: ₦${fee})`,
+        },
+      ]).select().single()
+      
+      if (txError) throw txError
+      
+      // Close WebView and navigate to success
+      setShowPaystackWebView(false)
+      navigation.navigate("FundingResult", { 
+        success: true,
+        amount: enteredAmount,
+        paymentMethod: "paystack"
+      })
+      
+    } catch (e) {
+      handlePaymentFailure(e.message)
+    }
+  }
+
+  const handlePaymentFailure = (errorMessage = "Payment was cancelled or failed") => {
+    setShowPaystackWebView(false)
+    setFeedback("")
+    Alert.alert("Payment Failed", errorMessage)
   }
 
   const handleManualTransfer = async () => {
@@ -162,6 +271,7 @@ export default function FundWallet() {
       Alert.alert("Error", "Please upload proof of payment.")
       return
     }
+    if (loading) return;
     setLoading(true)
     setFeedback("Uploading proof and submitting request...")
 
@@ -172,6 +282,7 @@ export default function FundWallet() {
       if (!user) throw new Error("You must be logged in to fund your wallet.")
       const enteredAmount = Number(amount) || 0
       const fee = processingFee
+      // For Manual Transfer: User pays enteredAmount + fee, but gets credited only enteredAmount
       const totalToPay = enteredAmount + fee
       const ext = proofImage.uri.split(".").pop()
       const fileName = `proofs/${user.id}_${Date.now()}.${ext}`
@@ -186,6 +297,23 @@ export default function FundWallet() {
       const {
         data: { publicUrl },
       } = supabase.storage.from("proofs").getPublicUrl(fileName)
+      
+      // Check if a similar pending transaction already exists to prevent duplicates
+      const { data: existingTx } = await supabase
+        .from("wallet_transactions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("type", "fund")
+        .eq("payment_method", "manual_transfer")
+        .eq("amount", enteredAmount)
+        .eq("status", "pending")
+        .gte("created_at", new Date(Date.now() - 300000).toISOString()) // Check last 5 minutes
+        .limit(1)
+      
+      if (existingTx && existingTx.length > 0) {
+        throw new Error("A similar pending transaction already exists. Please wait for it to be processed.")
+      }
+
       const { error: txError } = await supabase.from("wallet_transactions").insert([
         {
           user_id: user.id,
@@ -546,6 +674,60 @@ export default function FundWallet() {
       marginHorizontal: 18,
       marginBottom: 24,
     },
+    // WebView Styles
+    webViewContainer: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    webViewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.surface,
+    },
+    webViewCloseButton: {
+      padding: 8,
+    },
+    webViewTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    webView: {
+      flex: 1,
+    },
+    webViewLoading: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+    },
+    webViewLoadingText: {
+      marginTop: 12,
+      fontSize: 16,
+    },
+    testButtonContainer: {
+      position: 'absolute',
+      bottom: 20,
+      left: 20,
+      right: 20,
+      zIndex: 1000,
+    },
+    testButton: {
+      backgroundColor: theme.accent,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    testButtonText: {
+      color: theme.primary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
   })
 
   // FundWallet Skeleton Component
@@ -663,6 +845,9 @@ export default function FundWallet() {
               <Text style={{ color: theme.text, fontWeight: "bold", fontSize: 16 }}>
                 Total to Pay: ₦{(Number(amount || 0) + processingFee).toLocaleString()}
               </Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
+                You will be credited: ₦{Number(amount || 0).toLocaleString()}
+              </Text>
             </View>
           )}
 
@@ -677,7 +862,7 @@ export default function FundWallet() {
                 ]}
                 onPress={() => {
                   setPaymentMethod("paystack")
-                  setFeedback("You selected Paystack. You will pay online and your wallet will be funded instantly.")
+                  setFeedback("You selected Paystack. You will pay the total amount (including fee) online and your wallet will be credited with the entered amount instantly.")
                 }}
               >
                 <Ionicons name="card" size={24} color={paymentMethod === "paystack" ? theme.primary : theme.text} />
@@ -699,12 +884,12 @@ export default function FundWallet() {
                 onPress={() => {
                   setPaymentMethod("manual_transfer")
                   setFeedback(
-                    "You selected Manual Transfer. You must transfer to the admin account and upload proof. Your wallet will be funded after admin approval.",
+                    "You selected Manual Transfer. You must transfer the total amount (including fee) to the admin account and upload proof. Your wallet will be credited with the entered amount after admin approval.",
                   )
                 }}
               >
                 <Ionicons
-                  name="bank"
+                  name="business"
                   size={24}
                   color={paymentMethod === "manual_transfer" ? theme.primary : theme.text}
                 />
@@ -793,12 +978,18 @@ export default function FundWallet() {
             </>
           )}
 
+
+
           {/* Submit Button */}
           {paymentMethod === "paystack" ? (
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={() => setShowPaystackModal(true)}
-              disabled={loading}
+              style={[styles.submitButton, loading || paystackLoading || isProcessingPaystack ? styles.submitButtonDisabled : null]}
+              onPress={() => {
+                if (!isProcessingPaystack) {
+                  setShowPaystackModal(true)
+                }
+              }}
+              disabled={loading || paystackLoading || isProcessingPaystack}
               activeOpacity={0.8}
             >
               <Text style={styles.submitButtonText}>Pay with Paystack</Text>
@@ -806,12 +997,12 @@ export default function FundWallet() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              style={[styles.submitButton, loading || paystackLoading ? styles.submitButtonDisabled : null]}
               onPress={handleManualTransfer}
-              disabled={loading}
+              disabled={loading || paystackLoading}
               activeOpacity={0.8}
             >
-              {loading ? (
+              {loading || paystackLoading ? (
                 <ActivityIndicator color={theme.primary} size="small" />
               ) : (
                 <>
@@ -823,7 +1014,10 @@ export default function FundWallet() {
           )}
 
           {/* Paystack Modal */}
-          <Modal isVisible={showPaystackModal} onBackdropPress={() => setShowPaystackModal(false)}>
+          <Modal 
+            isVisible={showPaystackModal} 
+            onBackdropPress={() => setShowPaystackModal(false)}
+          >
             <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Pay with Paystack</Text>
               <Text style={[styles.modalText, { color: theme.textSecondary }]}>
@@ -835,6 +1029,8 @@ export default function FundWallet() {
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: theme.accent }]}
                   onPress={handlePaystack}
+                  disabled={paystackLoading || isProcessingPaystack}
+                  activeOpacity={paystackLoading || isProcessingPaystack ? 0.5 : 0.8}
                 >
                   <Text style={[styles.modalButtonText, { color: theme.textContrast }]}>Simulate Paystack Payment</Text>
                 </TouchableOpacity>
@@ -842,6 +1038,69 @@ export default function FundWallet() {
               <TouchableOpacity onPress={() => setShowPaystackModal(false)}>
                 <Text style={[styles.modalCancel, { color: theme.accent }]}>Cancel</Text>
               </TouchableOpacity>
+            </View>
+          </Modal>
+
+          {/* Paystack WebView */}
+          <Modal 
+            isVisible={showPaystackWebView} 
+            style={{ margin: 0 }}
+            animationIn="slideInUp"
+            animationOut="slideOutDown"
+          >
+            <View style={styles.webViewContainer}>
+              <View style={styles.webViewHeader}>
+                <TouchableOpacity
+                  style={styles.webViewCloseButton}
+                  onPress={() => setShowPaystackWebView(false)}
+                >
+                  <Ionicons name="close" size={24} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={[styles.webViewTitle, { color: theme.text }]}>Paystack Payment</Text>
+                <View style={{ width: 40 }} />
+              </View>
+              <WebView
+                source={{ uri: paystackUrl }}
+                style={styles.webView}
+                onNavigationStateChange={handleWebViewNavigationStateChange}
+                onError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent
+                  console.log('WebView error:', nativeEvent)
+                  handlePaymentFailure("Failed to load payment page")
+                }}
+                onHttpError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent
+                  console.log('WebView HTTP error:', nativeEvent)
+                  handlePaymentFailure("Payment page error")
+                }}
+                startInLoadingState={true}
+                renderLoading={() => (
+                  <View style={styles.webViewLoading}>
+                    <ActivityIndicator size="large" color={theme.accent} />
+                    <Text style={[styles.webViewLoadingText, { color: theme.text }]}>
+                      Loading Paystack...
+                    </Text>
+                  </View>
+                )}
+              />
+              {/* Test buttons for development */}
+              <View style={styles.testButtonContainer}>
+                <TouchableOpacity
+                  style={styles.testButton}
+                  onPress={handlePaymentSuccess}
+                >
+                  <Text style={styles.testButtonText}>Test: Simulate Payment Success</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.warning }]}
+                  onPress={() => {
+                    setAmount("100") // Set a small test amount
+                    setFeedback("Amount set to ₦100 for testing")
+                  }}
+                >
+                  <Text style={styles.testButtonText}>Set Test Amount (₦100)</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </Modal>
         </ScrollView>

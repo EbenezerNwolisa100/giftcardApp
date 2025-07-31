@@ -28,10 +28,14 @@ export default function Wallet() {
   const [transactions, setTransactions] = useState([])
   const [balanceVisible, setBalanceVisible] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [isFetching, setIsFetching] = useState(false) // Add this to prevent multiple simultaneous calls
   const navigation = useNavigation()
   const { theme, isDarkTheme } = useTheme()
 
   const fetchWalletData = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (isFetching) return
+    setIsFetching(true)
     setLoading(true)
     setRefreshing(true)
     try {
@@ -76,6 +80,24 @@ export default function Wallet() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(10)
+      
+      // Helper function to get transaction title
+      const getTransactionTitle = (type) => {
+        switch (type) {
+          case "fund":
+            return "Wallet Funded"
+          case "withdrawal":
+            return "Withdrawal"
+          case "refund":
+            return "Refund"
+          case "credit":
+            return "Credit"
+          case "debit":
+            return "Debit"
+          default:
+            return "Transaction"
+        }
+      }
       
       // Format wallet transactions for display and TransactionDetails compatibility
       const formattedWalletTxs = (walletTxs || []).map((tx) => ({
@@ -122,12 +144,14 @@ export default function Wallet() {
       setTransactions(allTransactions)
     } catch (error) {
       console.error("Error fetching wallet data:", error)
-      Alert.alert("Error", "Failed to load wallet data")
+      // Don't show alert on every error, just log it
+      // Alert.alert("Error", "Failed to load wallet data")
     } finally {
       setLoading(false)
       setRefreshing(false)
+      setIsFetching(false)
     }
-  }, [])
+  }, []) // Remove isFetching from dependency array to prevent infinite loop
 
   useFocusEffect(
     useCallback(() => {
@@ -181,7 +205,7 @@ export default function Wallet() {
   const getTransactionColor = (type) => {
     switch (type) {
       case "fund":
-        return theme.success
+        return theme.primary
       case "withdrawal":
         return theme.error
       case "refund":
@@ -218,47 +242,47 @@ export default function Wallet() {
       activeOpacity={0.8}
     >
       <View style={styles.transactionItem}>
-        <View style={styles.transactionLeft}>
-          <View style={[styles.transactionIcon, { backgroundColor: getTransactionColor(item.type) + "20" }]}>
-            {getTransactionIcon(item.type)}
-          </View>
-          <View style={styles.transactionInfo}>
+      <View style={styles.transactionLeft}>
+        <View style={[styles.transactionIcon, { backgroundColor: getTransactionColor(item.type) + "20" }]}>
+          {getTransactionIcon(item.type)}
+        </View>
+        <View style={styles.transactionInfo}>
             <Text style={styles.transactionTitle} numberOfLines={1}>
               {getTransactionTitle(item.type)}
             </Text>
             <Text style={styles.transactionDate}>
               {formatDate(item.created_at)}
             </Text>
-            {item.description && (
+          {item.description && (
               <Text style={styles.transactionDescription} numberOfLines={1}>
                 {item.description}
               </Text>
-            )}
-          </View>
+          )}
         </View>
-        <View style={styles.transactionRight}>
-          <Text
-            style={[
-              styles.transactionAmount,
+      </View>
+      <View style={styles.transactionRight}>
+        <Text
+          style={[
+            styles.transactionAmount,
               { color: item.type === "fund" || item.type === "refund" || item.type === "credit" ? theme.success : theme.error },
-            ]}
-          >
+          ]}
+        >
             {item.type === "fund" || item.type === "refund" || item.type === "credit" ? "+" : "-"}₦{item.amount?.toLocaleString()}
-          </Text>
+        </Text>
           <View
-            style={[
-              styles.transactionStatus,
-              {
+          style={[
+            styles.transactionStatus,
+            {
                 backgroundColor:
-                  item.status === "completed" ? theme.success : item.status === "pending" ? theme.warning : theme.error,
-              },
-            ]}
-          >
+                item.status === "completed" ? theme.success : item.status === "pending" ? theme.warning : theme.error,
+            },
+          ]}
+        >
             <Text style={{ color: theme.primary, fontSize: 11, fontWeight: "700" }}>
-              {item.status?.charAt(0).toUpperCase() + item.status?.slice(1)}
-            </Text>
-          </View>
-        </View>
+          {item.status?.charAt(0).toUpperCase() + item.status?.slice(1)}
+        </Text>
+      </View>
+    </View>
       </View>
     </TouchableOpacity>
   )
@@ -587,10 +611,10 @@ export default function Wallet() {
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
+          </TouchableOpacity>
         <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold' }}>My Wallet</Text>
         <View style={{ width: 32, height: 32 }} />
-      </View>
+        </View>
 
       <ScrollView
         style={{ flex: 1 }}
@@ -608,23 +632,23 @@ export default function Wallet() {
       >
         {/* Balance Card */}
         <View style={styles.balanceCard}>
-          <View style={styles.balanceHeader}>
+            <View style={styles.balanceHeader}>
             <Text style={styles.balanceLabel}>Available Balance</Text>
-            <TouchableOpacity
+              <TouchableOpacity
               onPress={async () => {
                 setBalanceVisible((v) => {
                   AsyncStorage.setItem("balanceVisible", (!v).toString())
                   return !v
                 })
               }}
-            >
-              <Ionicons
+              >
+                <Ionicons
                 name={balanceVisible ? "eye-off-outline" : "eye-outline"}
-                size={20}
+                  size={20}
                 color={theme.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
+                />
+              </TouchableOpacity>
+            </View>
           <Text style={styles.balanceAmount}>
             {balanceVisible ? `₦${balance.toLocaleString()}` : "₦ ****"}
           </Text>

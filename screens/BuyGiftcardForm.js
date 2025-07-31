@@ -1304,61 +1304,7 @@ export default function BuyGiftcardForm() {
       marginLeft: 12,
       flex: 1,
     },
-    // Skeleton Styles
-    skeletonContainer: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    skeletonFixedHeader: {
-      height: HEADER_HEIGHT_FORM,
-      backgroundColor: theme.primary,
-      borderBottomLeftRadius: 20,
-      borderBottomRightRadius: 20,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 5 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 8,
-      zIndex: 10,
-    },
-    skeletonBrandCard: {
-      height: 120,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 20,
-      marginHorizontal: 24,
-      marginTop: 20,
-      marginBottom: 24,
-    },
-    skeletonSectionTitle: {
-      height: 20,
-      width: '50%',
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 4,
-      marginBottom: 16,
-      alignSelf: 'flex-start',
-      marginLeft: 24,
-    },
-    skeletonSummaryCard: {
-      height: 200,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 16,
-      marginBottom: 24,
-      marginHorizontal: 24,
-    },
-    skeletonWalletContainer: {
-      height: 120,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 16,
-      marginBottom: 24,
-      marginHorizontal: 24,
-    },
-    skeletonButton: {
-      height: 60,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 16,
-      marginBottom: 24,
-      marginHorizontal: 24,
-    },
+
     // Custom Modal Styles
     modalContent: {
       backgroundColor: theme.surface,
@@ -1420,33 +1366,83 @@ export default function BuyGiftcardForm() {
 
   // BuyGiftcardForm Skeleton Component
   const BuyGiftcardFormSkeleton = () => (
-    <View style={styles.skeletonContainer}>
+    <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+
       {/* Fixed Header Skeleton */}
-      <View style={styles.skeletonFixedHeader}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60, paddingBottom: 20, width: '100%' }}>
-          <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} /> {/* Back button placeholder */}
-          <View style={[styles.headerTitle, { backgroundColor: theme.surfaceSecondary, width: 180, height: 24 }]} /> {/* Title placeholder */}
-          <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
-        </View>
+      <View
+        style={{
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} />
+        <View style={{ width: 140, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+        <View style={{ width: 32, height: 32 }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContainer, { paddingTop: HEADER_HEIGHT_FORM + 20 }]}
+        contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Brand & Variant Info Skeleton */}
-        <View style={styles.skeletonBrandCard} />
+        <View style={styles.brandCard}>
+          <View style={[styles.brandImageContainer, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={{ width: 40, height: 40, backgroundColor: theme.surfaceSecondary, borderRadius: 8 }} />
+          </View>
+          <View style={styles.brandInfo}>
+            <View style={{ width: 120, height: 20, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 4 }} />
+            <View style={{ width: 100, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 4 }} />
+            <View style={{ width: 80, height: 14, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+          </View>
+        </View>
 
         {/* Purchase Summary Skeleton */}
-        <View style={styles.skeletonSectionTitle} />
-        <View style={styles.skeletonSummaryCard} />
+        <View style={styles.summaryContainer}>
+          <View style={[styles.sectionTitle, { backgroundColor: theme.surfaceSecondary, width: 150, height: 18 }]} />
+          <View style={[styles.summaryCard, { backgroundColor: theme.surfaceSecondary }]}>
+            <View style={styles.summaryRow}>
+              <View style={{ width: 80, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+              <View style={{ width: 60, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+            </View>
+            <View style={styles.summaryRow}>
+              <View style={{ width: 70, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+              <View style={{ width: 40, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+            </View>
+            <View style={styles.summaryRow}>
+              <View style={{ width: 50, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+              <View style={{ width: 60, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+            </View>
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <View style={{ width: 100, height: 18, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+              <View style={{ width: 120, height: 20, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+            </View>
+          </View>
+        </View>
 
         {/* Wallet Balance Display Skeleton */}
-        <View style={styles.skeletonWalletContainer} />
+        <View style={[styles.walletContainer, { backgroundColor: theme.surfaceSecondary }]}>
+          <View style={{ width: 100, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 8 }} />
+          <View style={{ width: 120, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 4 }} />
+          <View style={{ width: 80, height: 14, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+        </View>
 
         {/* Purchase/Fund Wallet Button Skeleton */}
-        <View style={styles.skeletonButton} />
+        <View style={[styles.purchaseButton, { backgroundColor: theme.surfaceSecondary }]}>
+          <View style={{ width: 140, height: 18, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+        </View>
       </ScrollView>
     </View>
   );

@@ -55,6 +55,8 @@ function TabBarBackground() {
         top: 0,
         height: "100%",
         backgroundColor: theme.tabBar, // Use solid color from theme
+        borderTopWidth: 1,
+        borderTopColor: theme.border,
       }}
     />
   )
@@ -124,10 +126,7 @@ function LoggedInTabs() {
         tabBarInactiveTintColor: theme.tabBarInactive, // Use theme color
         tabBarBackground: () => <TabBarBackground />,
         tabBarStyle: {
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
+          position: "relative",
           height: Platform.OS === "ios" ? 85 : 70,
           borderTopWidth: 0,
           elevation: 0,
@@ -146,7 +145,7 @@ function LoggedInTabs() {
           marginTop: -2,
           textAlign: "center",
         },
-        tabBarHideOnKeyboard: true,
+        tabBarHideOnKeyboard: false, // Changed to false so tab bar stays visible
       })}
     >
       <Tab.Screen

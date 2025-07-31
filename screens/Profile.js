@@ -12,6 +12,7 @@ import {
   ScrollView,
   RefreshControl,
   Platform,
+  Animated,
 } from "react-native"
 import { supabase } from "./supabaseClient"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
@@ -21,7 +22,17 @@ import { useTheme } from "./ThemeContext"
 const { width } = Dimensions.get("window")
 
 // Define MenuItem component locally within Profile.js
-function MenuItem({ icon, label, onPress, labelStyle, loading, theme, isLast }) {
+function MenuItem({ icon, label, onPress, labelStyle, loading, theme, isLast, showToggle, toggleValue }) {
+  const [animatedValue] = useState(new Animated.Value(toggleValue ? 1 : 0))
+
+  useEffect(() => {
+    Animated.timing(animatedValue, {
+      toValue: toggleValue ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [toggleValue])
+
   const styles = StyleSheet.create({
     menuItem: {
       flexDirection: "row",
@@ -42,6 +53,20 @@ function MenuItem({ icon, label, onPress, labelStyle, loading, theme, isLast }) 
       flex: 1,
       fontWeight: "500",
     },
+    toggleContainer: {
+      width: 51,
+      height: 31,
+      borderRadius: 15.5,
+      backgroundColor: toggleValue ? theme.accent : theme.border,
+      padding: 2,
+      justifyContent: 'center',
+    },
+    toggleThumb: {
+      width: 27,
+      height: 27,
+      borderRadius: 13.5,
+      backgroundColor: theme.primary,
+    },
   })
 
   return (
@@ -50,6 +75,22 @@ function MenuItem({ icon, label, onPress, labelStyle, loading, theme, isLast }) 
       <Text style={[styles.menuLabel, labelStyle]}>{label}</Text>
       {loading ? (
         <ActivityIndicator size="small" color={theme.accent} />
+      ) : showToggle ? (
+        <View style={styles.toggleContainer}>
+          <Animated.View 
+            style={[
+              styles.toggleThumb,
+              {
+                transform: [{
+                  translateX: animatedValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 20],
+                  })
+                }]
+              }
+            ]} 
+          />
+        </View>
       ) : (
         <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
       )}
@@ -188,7 +229,7 @@ export default function Profile() {
     scrollContainer: {
       flexGrow: 1,
       paddingHorizontal: 18,
-      paddingBottom: Platform.OS === "ios" ? 85 + 20 : 70 + 20, // Account for tab bar height
+      paddingBottom: 20, // Reduced since tab bar is now relative positioned
     },
     profileCard: {
       backgroundColor: theme.surface, // Solid surface color
@@ -239,53 +280,67 @@ export default function Profile() {
       elevation: 2,
     },
     // Skeleton Styles
-    skeletonContainer: {
-      flex: 1,
-      backgroundColor: theme.background,
-      paddingHorizontal: 24,
-    },
     skeletonHeader: {
-      height: 24,
-      width: '60%',
       backgroundColor: theme.surfaceSecondary,
       borderRadius: 4,
     },
     skeletonProfileCard: {
-      height: 100,
-      backgroundColor: theme.surfaceSecondary,
+      backgroundColor: theme.surface,
       borderRadius: 20,
       marginBottom: 32,
-      marginTop: 20,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 5,
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 24,
     },
     skeletonMenuItem: {
-      height: 50,
-      backgroundColor: theme.surfaceSecondary,
-      borderRadius: 12,
-      marginBottom: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
     },
   })
 
   // Profile Skeleton Component
   const ProfileSkeleton = () => (
-    <View style={styles.skeletonContainer}>
+    <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+      
       {/* Fixed Header Skeleton */}
       <View style={styles.fixedHeader}>
-        <View style={[styles.skeletonHeader, { width: 200, height: 24 }]} />
+        <View style={[styles.skeletonHeader, { width: 100, height: 24 }]} />
         <View style={[styles.notificationButton, { backgroundColor: theme.surfaceSecondary, borderRadius: 20, width: 40, height: 40 }]} />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContainer, { paddingTop: 20 }]} // Adjust padding for skeleton
+        contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card Skeleton */}
-        <View style={styles.skeletonProfileCard} />
+        <View style={styles.skeletonProfileCard}>
+          <View style={styles.avatarCircle}>
+            <View style={{ width: 36, height: 36, backgroundColor: theme.surfaceSecondary, borderRadius: 18 }} />
+          </View>
+          <View style={styles.profileInfo}>
+            <View style={[styles.skeletonHeader, { width: 120, height: 18, marginBottom: 8 }]} />
+            <View style={[styles.skeletonHeader, { width: 180, height: 14 }]} />
+          </View>
+        </View>
 
         {/* Menu List Skeletons */}
-        <View style={[styles.menuList, { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0 }]}>
+        <View style={styles.menuList}>
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <View key={i} style={styles.skeletonMenuItem} />
+            <View key={i} style={styles.skeletonMenuItem}>
+              <View style={{ width: 32, height: 22, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginRight: 16 }} />
+              <View style={[styles.skeletonHeader, { flex: 1, height: 16 }]} />
+              <View style={{ width: 20, height: 20, backgroundColor: theme.surfaceSecondary, borderRadius: 10 }} />
+            </View>
           ))}
         </View>
       </ScrollView>
@@ -373,9 +428,11 @@ export default function Profile() {
           )}
           <MenuItem
             icon={<Ionicons name={isDarkTheme ? "sunny" : "moon"} size={22} color={theme.accent} />}
-            label={isDarkTheme ? "Light Mode" : "Dark Mode"}
+            label="Switch Theme"
             onPress={toggleTheme}
             theme={theme}
+            showToggle={true}
+            toggleValue={isDarkTheme}
           />
           <MenuItem
             icon={<Feather name="help-circle" size={22} color={theme.accent} />}

@@ -6,7 +6,6 @@ import { Image } from "react-native";
 import lightLogo from "../assets/lightlogo.png";
 import darkLogo from "../assets/darklogo.png";
 
-
 const { width } = Dimensions.get("window")
 
 export default function Homepage({ navigation }) {
@@ -21,31 +20,32 @@ export default function Homepage({ navigation }) {
       backgroundColor: theme.primary,
     },
     header: {
-      paddingTop: 60,
       paddingHorizontal: 24,
       alignItems: "center",
-      marginBottom: 60, // Increased margin for more breathing room
+      marginBottom: 40,
     },
     logoContainer: {
       // No explicit width/height here, let image size handle it
       justifyContent: "center",
       alignItems: "center",
+      paddingBottom: 20,
     },
     logoImage: {
-      width: 100, // Larger logo for prominence
-      height: 100,
-      borderRadius: 25, // Slightly rounded corners for the logo image itself
-      // No background or shadow on the image itself, let the container handle it if needed
+      width: 150, // Larger logo for prominence
+      height: 120,
+      borderRadius: 25, 
     },
     content: {
       flex: 1,
       paddingHorizontal: 24,
       justifyContent: "center",
-      alignItems: "center", // Center content horizontally
+      alignItems: "center",
+      paddingTop: 60, // Add top padding to account for status bar
+      paddingBottom: 60, // Add bottom padding for equal spacing
     },
     welcomeSection: {
       alignItems: "center",
-      marginBottom: 60, // More space below welcome text
+      marginBottom: 50,
     },
     welcomeTitle: {
       fontSize: 34, // Slightly larger for impact
@@ -67,7 +67,7 @@ export default function Homepage({ navigation }) {
     featuresContainer: {
       flexDirection: "row",
       justifyContent: "space-around",
-      marginBottom: 60,
+      marginBottom: 50,
       flexWrap: "wrap",
     },
     featureCard: {
@@ -102,15 +102,15 @@ export default function Homepage({ navigation }) {
     },
     primaryButton: {
       width: "100%",
-      marginBottom: 20, // Increased margin between buttons
-      borderRadius: 12, // More subtle rounded corners for buttons
-      backgroundColor: theme.accent, // Solid accent color for primary action
+      marginBottom: 16,
+      borderRadius: 12,
+      backgroundColor: theme.accent,
       paddingVertical: 18,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 8 }, // More pronounced shadow
+      shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.3,
       shadowRadius: 12,
       elevation: 10,
@@ -173,8 +173,9 @@ export default function Homepage({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
 
-      {/* Header Section - Logo is now directly in the header */}
-      <View style={styles.header}>
+      {/* Main Content - Everything centered */}
+      <View style={styles.content}>
+        {/* Logo Section */}
         <View style={styles.logoContainer}>
           <Image
             source={isDarkTheme ? lightLogo : darkLogo}
@@ -182,10 +183,7 @@ export default function Homepage({ navigation }) {
             resizeMode="contain"
           />
         </View>
-      </View>
 
-      {/* Main Content */}
-      <View style={styles.content}>
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeTitle}>Welcome to the Future of Gift Cards</Text>
           <Text style={styles.welcomeSubtitle}>

@@ -102,15 +102,16 @@ export default function Login({ navigation }) {
     },
     backButton: {
       padding: 8,
-      marginRight: 10, // Space between back button and logo/title if they were next to each other
+      marginRight: 10, 
     },
     logoSection: {
       alignItems: "center",
-      marginBottom: 32, // Adjusted margin for better balance
-      width: '100%', // Ensure it takes full width for centering
+      marginBottom: 32,
+      width: '100%',
+      paddingTop: 20, 
     },
     logoImage: {
-      width: 120, // Larger, more prominent logo
+      width: 150, // Larger, more prominent logo
       height: 120,
       borderRadius: 30, // More rounded corners
       marginBottom: 0, // No margin since we have a container
@@ -242,30 +243,57 @@ export default function Login({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
 
+      {/* Fixed Header */}
+      <View
+        style={{
+          // backgroundColor: theme.primary,
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 10,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          // elevation: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            marginLeft: 0,
+            padding: 6,
+            borderRadius: 6,
+          }}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={{ color: theme.text, fontSize: 20, fontWeight: 'bold' }}></Text>
+        <View style={{ width: 32, height: 32 }} />
+      </View>
+
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingView}>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={theme.text} />
-            </TouchableOpacity>
-          </View>
 
           {/* Logo and Title */}
           <View style={styles.logoSection}>
             <View style={{
-              backgroundColor: theme.surfaceSecondary,
               borderRadius: 35,
               padding: 20,
               shadowColor: theme.shadow,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.1,
               shadowRadius: 8,
-              elevation: 4,
             }}>
               <Image
                 source={isDarkTheme ? lightLogo : darkLogo}

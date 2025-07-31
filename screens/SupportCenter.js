@@ -552,11 +552,11 @@ export default function SupportCenter() {
           }}
           ListHeaderComponent={() => (
             <View>
-              {/* Title Section Skeleton */}
-              <View style={styles.skeletonTitleSection} />
+          {/* Title Section Skeleton */}
+          <View style={styles.skeletonTitleSection} />
 
-              {/* New Chat Button Skeleton */}
-              <View style={styles.skeletonNewChatButton} />
+          {/* New Chat Button Skeleton */}
+          <View style={styles.skeletonNewChatButton} />
             </View>
           )}
           renderItem={() => (
@@ -692,7 +692,7 @@ export default function SupportCenter() {
               </View>
             ) : (
               <View style={styles.placeholder} />
-            )}
+              )}
           </View>
 
           {/* Messages */}

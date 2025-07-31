@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GiftCardPro Platform - Complete White-Label Solution</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0d0d0d;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #718096;
+        }
+
+        /* Hero gradient background */
+        .hero-gradient {
+            background: linear-gradient(to right, #1a202c, #2d3748);
+        }
+
+        /* Glassmorphism effect for cards */
+        .glass-card {
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        /* Primary button gradient */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        /* Feature icon color */
+        .feature-icon {
+            color: #667eea;
+        }
+        
+        /* Animation for floating shapes */
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1) translateY(0);
+            }
+            50% {
+                transform: scale(1.1) translateY(-20px);
+            }
+        }
+        @keyframes pulse-slow {
+            0%, 100% {
+                transform: scale(1) translateY(0);
+            }
+            50% {
+                transform: scale(1.1) translateY(20px);
+            }
+        }
+
+        .animate-pulse {
+            animation: pulse 6s ease-in-out infinite;
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 8s ease-in-out infinite;
+        }
+
+        /* Image showcase styles */
+        .showcase-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .showcase-item:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .showcase-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            color: white;
+            padding: 2rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .showcase-item:hover .showcase-overlay {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="py-6 px-4 md:px-8 lg:px-16 sticky top-0 z-50 bg-[#0d0d0d] bg-opacity-80 backdrop-blur-sm">
+        <nav class="container mx-auto flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">GiftCardPro</a>
+            <div class="hidden md:flex space-x-6 text-sm font-medium">
+                <a href="#features" class="hover:text-blue-400 transition-colors">Features</a>
+                <a href="#platform" class="hover:text-blue-400 transition-colors">Platform</a>
+                <a href="#pricing" class="hover:text-blue-400 transition-colors">Pricing</a>
+                <a href="#contact" class="hover:text-blue-400 transition-colors">Contact</a>
+            </div>
+            <a href="#pricing" class="btn-primary text-white py-2 px-4 rounded-full text-sm font-semibold">Get Started</a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center text-center p-8 relative overflow-hidden hero-gradient">
+        <!-- Floating shapes as a design element -->
+        <div class="absolute inset-0 z-0">
+            <div class="absolute w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-20 top-10 left-20 animate-pulse"></div>
+            <div class="absolute w-52 h-52 bg-blue-500 rounded-full blur-3xl opacity-20 bottom-10 right-20 animate-pulse-slow"></div>
+            <div class="absolute w-32 h-32 bg-pink-500 rounded-full blur-3xl opacity-20 top-1/3 right-1/4 animate-pulse"></div>
+        </div>
+        <div class="z-10 max-w-4xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-extrabold leading-tight tracking-tighter text-white">
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
+                    Own Your
+                </span>
+                Gift Card Empire
+            </h1>
+            <p class="mt-6 text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
+                Complete white-label gift card trading platform. Ready to deploy, fully customizable, and profitable from day one. Start your digital business journey today.
+            </p>
+            <div class="mt-10 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#pricing" class="btn-primary text-white font-bold py-3 px-8 rounded-full shadow-lg">Get Started</a>
+                <a href="#platform" class="text-blue-300 font-semibold py-3 px-8 transition-colors hover:text-blue-400">
+                    View Demo &rarr;
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 px-8 text-center bg-[#0d0d0d]">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-gray-100">Why Choose Our Platform?</h2>
+            <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
+                From React Native mobile app to comprehensive admin dashboard, we provide everything you need to succeed.
+            </p>
+
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature Card 1 -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-purple-500 bg-opacity-20">
+                        <svg class="w-8 h-8 text-purple-400 feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Mobile-First Design</h3>
+                    <p class="mt-2 text-gray-400">
+                        Cross-platform React Native app with stunning UI/UX, real-time notifications, and seamless user experience across all devices.
+                    </p>
+                </div>
+                <!-- Feature Card 2 -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-blue-500 bg-opacity-20">
+                        <svg class="w-8 h-8 text-blue-400 feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"></path><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Admin Dashboard</h3>
+                    <p class="mt-2 text-gray-400">
+                        Comprehensive admin panel with advanced analytics, user management, transaction monitoring, and business insights.
+                    </p>
+                </div>
+                <!-- Feature Card 3 -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-green-500 bg-opacity-20">
+                        <svg class="w-8 h-8 text-green-400 feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Bank-Level Security</h3>
+                    <p class="mt-2 text-gray-400">
+                        Enterprise-grade security with encrypted transactions, secure wallet system, and advanced fraud prevention.
+                    </p>
+                </div>
+                <!-- Feature Card 4 -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-pink-500 bg-opacity-20">
+                        <svg class="w-8 h-8 text-pink-400 feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zM10 12a9 9 0 00-9 9h18a9 9 0 00-9-9z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Payment Integration</h3>
+                    <p class="mt-2 text-gray-400">
+                        Integrated Paystack payment gateway with WebView implementation and multiple payment options for users.
+                    </p>
+                </div>
+                <!-- Feature Card 5 -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-orange-500 bg-opacity-20">
+                        <svg class="w-8 h-8 text-orange-400 feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Cloud Infrastructure</h3>
+                    <p class="mt-2 text-gray-400">
+                        Supabase-powered backend with real-time database, authentication, and scalable cloud storage solutions.
+                    </p>
+                </div>
+                <!-- Feature Card 6 -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-500 bg-opacity-20">
+                        <svg class="w-8 h-8 text-red-400 feature-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zM9 7a1 1 0 012 0v2a1 1 0 11-2 0V7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">100% Customizable</h3>
+                    <p class="mt-2 text-gray-400">
+                        Fully customizable platform with modular architecture. Easy to modify, extend, and brand according to your vision.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform Showcase -->
+    <section id="platform" class="py-20 px-8 text-center bg-[#0d0d0d]">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-gray-100">Platform Showcase</h2>
+            <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
+                See our platform in action with real screenshots from the mobile app and admin dashboard.
+            </p>
+
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Showcase Item 1 -->
+                <div class="showcase-item">
+                    <img src="landingPageImages/IMG-20250731-WA0022.jpg" alt="Mobile App Interface" class="w-full h-64 object-cover">
+                    <div class="showcase-overlay">
+                        <h4 class="text-xl font-bold mb-2">Mobile App</h4>
+                        <p class="text-sm">Modern React Native interface with intuitive user experience</p>
+                    </div>
+                </div>
+                <!-- Showcase Item 2 -->
+                <div class="showcase-item">
+                    <img src="landingPageImages/IMG-20250731-WA0021.jpg" alt="Admin Dashboard" class="w-full h-64 object-cover">
+                    <div class="showcase-overlay">
+                        <h4 class="text-xl font-bold mb-2">Admin Dashboard</h4>
+                        <p class="text-sm">Comprehensive management panel with real-time analytics</p>
+                    </div>
+                </div>
+                <!-- Showcase Item 3 -->
+                <div class="showcase-item">
+                    <img src="landingPageImages/IMG-20250731-WA0020.jpg" alt="Payment System" class="w-full h-64 object-cover">
+                    <div class="showcase-overlay">
+                        <h4 class="text-xl font-bold mb-2">Payment System</h4>
+                        <p class="text-sm">Secure payment processing with multiple gateway options</p>
+                    </div>
+                </div>
+                <!-- Showcase Item 4 -->
+                <div class="showcase-item">
+                    <img src="landingPageImages/IMG-20250731-WA0019.jpg" alt="User Interface" class="w-full h-64 object-cover">
+                    <div class="showcase-overlay">
+                        <h4 class="text-xl font-bold mb-2">User Interface</h4>
+                        <p class="text-sm">Clean and modern design with excellent user experience</p>
+                    </div>
+                </div>
+                <!-- Showcase Item 5 -->
+                <div class="showcase-item">
+                    <img src="landingPageImages/IMG-20250731-WA0018.jpg" alt="Transaction Management" class="w-full h-64 object-cover">
+                    <div class="showcase-overlay">
+                        <h4 class="text-xl font-bold mb-2">Transaction Management</h4>
+                        <p class="text-sm">Efficient transaction processing and management system</p>
+                    </div>
+                </div>
+                <!-- Showcase Item 6 -->
+                <div class="showcase-item">
+                    <img src="landingPageImages/IMG-20250731-WA0017.jpg" alt="Security Features" class="w-full h-64 object-cover">
+                    <div class="showcase-overlay">
+                        <h4 class="text-xl font-bold mb-2">Security Features</h4>
+                        <p class="text-sm">Advanced security measures and fraud prevention</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-20 px-8 text-center bg-[#0d0d0d]">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-gray-100">Our Success by the Numbers</h2>
+            <div class="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Stat Card 1 -->
+                <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
+                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500" data-target="50">₦50M+</div>
+                    <p class="mt-2 text-gray-300">Potential Annual Revenue</p>
+                </div>
+                <!-- Stat Card 2 -->
+                <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
+                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500" data-target="8">6-8</div>
+                    <p class="mt-2 text-gray-300">Weeks to Launch</p>
+                </div>
+                <!-- Stat Card 3 -->
+                <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
+                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-500" data-target="300">300%</div>
+                    <p class="mt-2 text-gray-300">Average ROI</p>
+                </div>
+                <!-- Stat Card 4 -->
+                <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
+                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-green-500" data-target="24">24/7</div>
+                    <p class="mt-2 text-gray-300">Automated Operations</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-20 px-8 text-center bg-[#0d0d0d]">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-gray-100">Choose Your Path to Success</h2>
+            <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
+                Two flexible options to get you started with your gift card empire.
+            </p>
+
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-4xl mx-auto">
+                <!-- Pricing Card 1: Full Ownership -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-opacity-20">
+                    <h3 class="text-2xl font-bold text-purple-400">Full Ownership</h3>
+                    <p class="mt-2 text-gray-400">Complete platform ownership with no recurring fees.</p>
+                    <div class="my-6">
+                        <span class="text-5xl font-extrabold text-white">₦2M</span>
+                        <span class="text-gray-400">one-time payment</span>
+                    </div>
+                    <ul class="text-left text-gray-300 space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Complete source code ownership
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Full customization rights
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            No recurring fees
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            90 days technical support
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Installation & setup service
+                        </li>
+                    </ul>
+                    <a href="#contact" class="btn-primary mt-8 block w-full py-3 rounded-full font-bold">Get Full Ownership</a>
+                </div>
+
+                <!-- Pricing Card 2: Installment Plan (Featured) -->
+                <div class="glass-card p-8 rounded-2xl shadow-lg border-purple-400 border-2 relative scale-105">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-4 py-1 rounded-full">Most Popular</div>
+                    <h3 class="text-2xl font-bold text-blue-400">Installment Plan</h3>
+                    <p class="mt-2 text-gray-400">Flexible payment terms with extended support.</p>
+                    <div class="my-6">
+                        <span class="text-5xl font-extrabold text-white">₦500K</span>
+                        <span class="text-gray-400">monthly for 6 months</span>
+                    </div>
+                    <ul class="text-left text-gray-300 space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            All Full Ownership features
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Flexible payment terms
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Lower upfront investment
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Extended support period
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Priority technical support
+                        </li>
+                    </ul>
+                    <a href="#contact" class="btn-primary mt-8 block w-full py-3 rounded-full font-bold">Start Installment Plan</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section class="py-20 px-8 text-center bg-gradient-to-r from-purple-800 to-indigo-900">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-white">Ready to Launch Your Gift Card Empire?</h2>
+            <p class="mt-4 text-gray-200 max-w-2xl mx-auto">
+                Join successful entrepreneurs who have transformed their business with our platform. Start your journey today!
+            </p>
+            <div class="mt-8 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#contact" class="btn-primary text-white font-bold py-3 px-8 rounded-full shadow-lg">Request Demo</a>
+                <a href="#contact" class="text-blue-300 font-semibold py-3 px-8 transition-colors hover:text-blue-400">
+                    Contact Sales &rarr;
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="py-12 px-8 bg-[#0d0d0d] border-t border-gray-800 text-gray-400">
+        <div class="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-center md:text-left">
+            <div>
+                <a href="#" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">GiftCardPro</a>
+                <p class="mt-4 text-sm">Complete white-label gift card trading platform solution. Ready for deployment with full customization options and proven profitability.</p>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-white mb-4">Platform</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#features" class="hover:text-blue-400 transition-colors">Features</a></li>
+                    <li><a href="#platform" class="hover:text-blue-400 transition-colors">Showcase</a></li>
+                    <li><a href="#pricing" class="hover:text-blue-400 transition-colors">Pricing</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition-colors">Documentation</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-white mb-4">Support</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-blue-400 transition-colors">Technical Support</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition-colors">Installation Guide</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition-colors">API Documentation</a></li>
+                    <li><a href="#" class="hover:text-blue-400 transition-colors">FAQ</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-white mb-4">Contact</h4>
+                <ul class="space-y-2 text-sm">
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path></svg>
+                        sales@giftcardpro.ng
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
+                        +234 800 PLATFORM
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
+                        Lagos, Nigeria
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                        Mon-Fri 9AM-6PM
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="mt-12 text-center text-sm text-gray-600">
+            &copy; 2024 GiftCardPro Platform. All rights reserved. Complete Platform Solution for Entrepreneurs.
+        </div>
+    </footer>
+    
+    <script>
+        // Number animation for stats section
+        function animateNumbers() {
+            const stats = document.querySelectorAll('.stats-section .text-5xl[data-target]');
+            stats.forEach(stat => {
+                const target = +stat.getAttribute('data-target');
+                const increment = target / 100;
+                let current = 0;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    stat.textContent = Math.floor(current).toLocaleString() + stat.textContent.replace(/[0-9,.]/g, '');
+                }, 20);
+            });
+        }
+
+        // Trigger animation when stats section is visible
+        const statsSection = document.querySelector('.stats-section');
+        if (statsSection) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateNumbers();
+                        observer.unobserve(entry.target);
+                    }
+                });
+            });
+            observer.observe(statsSection);
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Parallax effect for floating shapes
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.animate-pulse, .animate-pulse-slow');
+            
+            shapes.forEach((shape, index) => {
+                const speed = 0.5 + (index * 0.1);
+                shape.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -552,6 +552,8 @@ const GiftcardInventory = () => {
           codes: [""],
           image_url: imageUrl, // Inherit from brand for new codes
           category_id: categoryId, // Inherit from brand for new codes
+          isExistingVariant: false, // Flag to indicate if this is an existing variant
+          existingVariantKey: "", // Key to identify existing variant
         },
       }))
     }
@@ -567,6 +569,8 @@ const GiftcardInventory = () => {
         codes: [""],
         image_url: "",
         category_id: "",
+        isExistingVariant: false,
+        existingVariantKey: "",
       }
 
       if (field === "quantity") {
@@ -609,6 +613,8 @@ const GiftcardInventory = () => {
         codes: [""],
         image_url: "",
         category_id: "",
+        isExistingVariant: false,
+        existingVariantKey: "",
       }
 
       const newCodes = [...currentForm.codes]
@@ -660,20 +666,21 @@ const GiftcardInventory = () => {
     try {
       // Create inventory items for each code
       const inventoryData = validCodes.map((code) => ({
-        buy_brand_id: buyBrandId, // Link to the new buy_brand_id
+        buy_brand_id: buyBrandId,
         variant_name: form.variant_name.trim(),
         rate: Number(form.rate),
-        value: Number(form.value), // Use the entered value
+        value: Number(form.value),
         code: code.trim(),
-        image_url: form.image_url || null, // Inherited from brand
-        category_id: form.category_id, // Inherited from brand
+        image_url: form.image_url || null,
+        category_id: form.category_id,
         sold: false,
       }))
 
       const { error } = await supabase.from("giftcards_buy").insert(inventoryData)
       if (error) throw error
 
-      setSuccess(`Variant "${form.variant_name}" with ${validCodes.length} gift card codes added successfully!`)
+      const actionText = form.isExistingVariant ? "added to existing variant" : "created"
+      setSuccess(`${validCodes.length} gift card codes ${actionText} for variant "${form.variant_name}" successfully!`)
 
       // Reset form
       setVariantForms((prev) => ({
@@ -681,11 +688,13 @@ const GiftcardInventory = () => {
         [buyBrandId]: {
           variant_name: "",
           rate: "",
-          value: "", // Reset value field
+          value: "",
           quantity: 1,
           codes: [""],
           image_url: form.image_url,
           category_id: form.category_id,
+          isExistingVariant: false,
+          existingVariantKey: "",
         },
       }))
 
@@ -789,6 +798,38 @@ const GiftcardInventory = () => {
     } else {
       initVariantForm(brandId)
     }
+  }
+
+  // Function to populate form with existing variant data
+  const populateExistingVariant = (buyBrandId, variantKey, variantName, value, rate) => {
+    console.log("Populating existing variant:", { buyBrandId, variantKey, variantName, value, rate })
+    const brandInfo = buyBrands.find((b) => b.id === buyBrandId)
+    console.log("Brand info found:", brandInfo)
+    
+    // Ensure the brand is expanded so the form is visible
+    setExpandedBrands((prev) => ({
+      ...prev,
+      [buyBrandId]: true,
+    }))
+    
+    setVariantForms((prev) => {
+      const newForm = {
+        ...prev,
+        [buyBrandId]: {
+          variant_name: variantName,
+          rate: rate.toString(),
+          value: value.toString(),
+          quantity: 1,
+          codes: [""],
+          image_url: brandInfo?.image_url || "",
+          category_id: brandInfo?.category_id || "",
+          isExistingVariant: true,
+          existingVariantKey: variantKey,
+        },
+      }
+      console.log("New variant form state:", newForm)
+      return newForm
+    })
   }
 
   // Group inventory items by buy_brand_id, then by variant_name and value
@@ -1008,7 +1049,24 @@ const GiftcardInventory = () => {
                       {/* Add Variant Form */}
                       <div className="card mb-4">
                         <div className="card-header">
-                          <h6 className="mb-0">Add New Variant Codes to {brand.name}</h6>
+                          <h6 className="mb-0">
+                            {variantForms[brand.id]?.isExistingVariant 
+                              ? `Add More Codes to Existing Variant: ${variantForms[brand.id]?.variant_name}`
+                              : `Add New Variant Codes to ${brand.name}`
+                            }
+                          </h6>
+                          {variantForms[brand.id]?.isExistingVariant && (
+                            <small className="text-muted">
+                              Variant details are locked. You can only add new codes to this existing variant.
+                            </small>
+                          )}
+                          {variantForms[brand.id]?.variant_name && (
+                            <div className="mt-2">
+                              <span className="badge bg-info">
+                                Form Ready: {variantForms[brand.id]?.isExistingVariant ? "Adding to Existing" : "Creating New"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="card-body">
                           <form onSubmit={(e) => handleAddVariant(e, brand.id)}>
@@ -1022,6 +1080,8 @@ const GiftcardInventory = () => {
                                   onChange={(e) => handleVariantFormChange(brand.id, "variant_name", e.target.value)}
                                   required
                                   placeholder="e.g., Standard, Premium"
+                                  readOnly={variantForms[brand.id]?.isExistingVariant}
+                                  style={variantForms[brand.id]?.isExistingVariant ? { backgroundColor: '#f8f9fa' } : {}}
                                 />
                               </div>
                               <div className="col-md-4">
@@ -1035,6 +1095,8 @@ const GiftcardInventory = () => {
                                   min="0"
                                   step="0.01"
                                   placeholder="25.00"
+                                  readOnly={variantForms[brand.id]?.isExistingVariant}
+                                  style={variantForms[brand.id]?.isExistingVariant ? { backgroundColor: '#f8f9fa' } : {}}
                                 />
                               </div>
                               <div className="col-md-4">
@@ -1048,6 +1110,8 @@ const GiftcardInventory = () => {
                                   min="0"
                                   step="0.01"
                                   placeholder="0.00"
+                                  readOnly={variantForms[brand.id]?.isExistingVariant}
+                                  style={variantForms[brand.id]?.isExistingVariant ? { backgroundColor: '#f8f9fa' } : {}}
                                 />
                               </div>
                               <div className="col-md-4">
@@ -1087,7 +1151,30 @@ const GiftcardInventory = () => {
                             </div>
 
                             <button className="btn btn-success" type="submit" disabled={addingVariant[brand.id]}>
-                              {addingVariant[brand.id] ? "Adding..." : "Add Variant Codes"}
+                              {addingVariant[brand.id] ? "Adding..." : variantForms[brand.id]?.isExistingVariant ? "Add More Codes" : "Add Variant Codes"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary ms-2"
+                              onClick={() => {
+                                setVariantForms((prev) => ({
+                                  ...prev,
+                                  [brand.id]: {
+                                    variant_name: "",
+                                    rate: "",
+                                    value: "",
+                                    quantity: 1,
+                                    codes: [""],
+                                    image_url: brand.image_url || "",
+                                    category_id: brand.category_id || "",
+                                    isExistingVariant: false,
+                                    existingVariantKey: "",
+                                  },
+                                }))
+                              }}
+                              disabled={addingVariant[brand.id]}
+                            >
+                              Clear Form
                             </button>
                           </form>
                         </div>
@@ -1102,10 +1189,26 @@ const GiftcardInventory = () => {
                           <div className="card-body">
                             {Object.entries(brand.variantGroups).map(([variantKey, variants]) => (
                               <div key={variantKey} className="mb-4">
-                                <h6 className="text-primary">
-                                  {variants[0]?.variant_name} (Value: ${variants[0]?.value} | Rate: ₦{variants[0]?.rate}
-                                  )
-                                </h6>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <h6 className="text-primary mb-0">
+                                    {variants[0]?.variant_name} (Value: ${variants[0]?.value} | Rate: ₦{variants[0]?.rate})
+                                  </h6>
+                                  <button
+                                    className="btn btn-sm btn-outline-success"
+                                    onClick={() => {
+                                      populateExistingVariant(
+                                        brand.id, 
+                                        variantKey, 
+                                        variants[0]?.variant_name, 
+                                        variants[0]?.value, 
+                                        variants[0]?.rate
+                                      )
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    Add More Codes
+                                  </button>
+                                </div>
                                 <div className="table-responsive">
                                   <table className="table table-sm table-bordered">
                                     <thead>

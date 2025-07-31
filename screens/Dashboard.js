@@ -36,9 +36,38 @@ export default function Dashboard() {
         data: { user },
       } = await supabase.auth.getUser()
       if (user) {
-        // Fetch profile
-        const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-        setProfile(profileData)
+        // Fetch profile with better error handling
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single()
+        
+        if (profileError) {
+          console.error("Error fetching profile:", profileError)
+          // If profile doesn't exist, try to create it with pending name
+          const pendingName = await AsyncStorage.getItem("pending_name")
+          if (pendingName) {
+            const { data: newProfile, error: createError } = await supabase
+              .from("profiles")
+              .upsert({
+                id: user.id,
+                full_name: pendingName,
+                email: user.email,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .select()
+              .single()
+            
+            if (!createError && newProfile) {
+              setProfile(newProfile)
+              await AsyncStorage.removeItem("pending_name")
+            }
+          }
+        } else {
+          setProfile(profileData)
+        }
 
         // Fetch gift card transactions (sell and buy)
         const { data: giftcardTxs, error: giftcardError } = await supabase
@@ -77,50 +106,50 @@ export default function Dashboard() {
 
         // Combine all transactions and normalize their structure
         const allCombinedTxs = []
-        // Gift Card Transactions
-        ;(giftcardTxs || []).forEach((tx) => {
-          const isSell = tx.type === "sell"
-          const isBuy = tx.type === "buy"
-          const brandName = isBuy ? tx.buy_brand?.name || tx.brand_name : tx.sell_brand?.name || tx.brand_name
-          const brandImage = isBuy ? tx.buy_brand?.image_url || tx.image_url : tx.sell_brand?.image_url || tx.image_url
-          const variantName = isBuy ? tx.variant_name : tx.sell_variant?.name || tx.variant_name
-          const amountDisplay = tx.total?.toLocaleString() || tx.amount?.toLocaleString() || "0.00"
-          allCombinedTxs.push({
-            ...tx,
-            txType: tx.type, // Add txType for TransactionDetails compatibility
-            originalType: tx.type,
-            displayType: isSell ? "Sell Gift Card" : "Buy Gift Card",
-            displayAmount: amountDisplay,
-            displayBrand: brandName || "Gift Card",
-            displayImage: brandImage,
-            variantName: variantName,
-            displayStatus: tx.status,
-            displayDate: tx.created_at,
-            displayId: `gc-${tx.id}`,
-            displayCode: isBuy && Array.isArray(tx.card_codes) && tx.card_codes.length > 0 ? tx.card_codes.join(", ") : tx.card_code,
-            paymentMethod: tx.payment_method,
-            proofUrl: tx.proof_of_payment_url,
-            paystackRef: tx.paystack_reference,
-            icon: isSell ? "credit-card" : "shopping-cart", // MaterialIcons
-            iconColor: theme.secondary, // Use theme color
+          // Gift Card Transactions
+          ; (giftcardTxs || []).forEach((tx) => {
+            const isSell = tx.type === "sell"
+            const isBuy = tx.type === "buy"
+            const brandName = isBuy ? tx.buy_brand?.name || tx.brand_name : tx.sell_brand?.name || tx.brand_name
+            const brandImage = isBuy ? tx.buy_brand?.image_url || tx.image_url : tx.sell_brand?.image_url || tx.image_url
+            const variantName = isBuy ? tx.variant_name : tx.sell_variant?.name || tx.variant_name
+            const amountDisplay = tx.total?.toLocaleString() || tx.amount?.toLocaleString() || "0.00"
+            allCombinedTxs.push({
+              ...tx,
+              txType: tx.type, // Add txType for TransactionDetails compatibility
+              originalType: tx.type,
+              displayType: isSell ? "Sell Gift Card" : "Buy Gift Card",
+              displayAmount: amountDisplay,
+              displayBrand: brandName || "Gift Card",
+              displayImage: brandImage,
+              variantName: variantName,
+              displayStatus: tx.status,
+              displayDate: tx.created_at,
+              displayId: `gc-${tx.id}`,
+              displayCode: isBuy && Array.isArray(tx.card_codes) && tx.card_codes.length > 0 ? tx.card_codes.join(", ") : tx.card_code,
+              paymentMethod: tx.payment_method,
+              proofUrl: tx.proof_of_payment_url,
+              paystackRef: tx.paystack_reference,
+              icon: isSell ? "credit-card" : "shopping-cart", // MaterialIcons
+              iconColor: theme.secondary, // Use theme color
+            })
           })
-        })
-        // Withdrawals
-        ;(withdrawals || []).forEach((tx) => {
-          allCombinedTxs.push({
-            ...tx,
-            txType: "withdrawal", // Add txType for TransactionDetails compatibility
-            originalType: "withdrawal",
-            displayType: "Withdrawal",
-            displayAmount: tx.amount?.toLocaleString() || "0.00",
-            displayBrand: "Wallet Withdrawal",
-            displayStatus: tx.status,
-            displayDate: tx.created_at,
-            displayId: `wd-${tx.id}`,
-            icon: "arrow-up", // Ionicons
-            iconColor: theme.warning, // Use theme color
+          // Withdrawals
+          ; (withdrawals || []).forEach((tx) => {
+            allCombinedTxs.push({
+              ...tx,
+              txType: "withdrawal", // Add txType for TransactionDetails compatibility
+              originalType: "withdrawal",
+              displayType: "Withdrawal",
+              displayAmount: tx.amount?.toLocaleString() || "0.00",
+              displayBrand: "Wallet Withdrawal",
+              displayStatus: tx.status,
+              displayDate: tx.created_at,
+              displayId: `wd-${tx.id}`,
+              icon: "arrow-up", // Ionicons
+              iconColor: theme.warning, // Use theme color
+            })
           })
-        })
 
         // Sort all transactions by date and get the latest 5
         const sortedAndLimitedTxs = allCombinedTxs
@@ -283,6 +312,21 @@ export default function Dashboard() {
     actionButtonIcon: {
       color: isDarkTheme ? theme.text : theme.primary, // Icon color for contrast
     },
+    fundIconContainer: {
+      backgroundColor: theme.accent,
+      borderRadius: 10,
+      width: 45,
+      height: 47,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: theme.background,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    },
     quickActionsContainer: {
       paddingHorizontal: 24,
       marginTop: 0,
@@ -291,7 +335,13 @@ export default function Dashboard() {
       color: theme.text,
       fontSize: 18,
       fontWeight: "bold",
-      marginBottom: 16,
+      marginBottom: 12,
+    },
+    sectionTitles: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "bold",
+      marginBottom: 0,
     },
     quickActionsGrid: {
       flexDirection: "row",
@@ -338,10 +388,10 @@ export default function Dashboard() {
     },
     pendingContainer: {
       paddingHorizontal: 24,
-      marginTop: 32,
+      marginTop: 0,
     },
     pendingActionCard: {
-      backgroundColor: theme.warning, // Use warning color for pending actions
+      backgroundColor: theme.surfaceSecondary, // Use warning color for pending actions
       borderRadius: 16,
       padding: 16,
       flexDirection: "row",
@@ -382,8 +432,8 @@ export default function Dashboard() {
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 24,
-      marginTop: 0,
-      marginBottom: 0,
+      marginTop: 20,
+      marginBottom: 16,
     },
     seeAllText: {
       color: theme.accent,
@@ -534,7 +584,7 @@ export default function Dashboard() {
   const DashboardSkeleton = () => (
     <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
-      
+
       {/* Fixed Header Skeleton */}
       <View style={styles.fixedHeader}>
         <View style={styles.headerContent}>
@@ -562,7 +612,11 @@ export default function Dashboard() {
               <View style={[styles.skeletonText, { width: 150, height: 32, marginBottom: 20 }]} />
               <View style={styles.actionButtonsContainer}>
                 <View style={[styles.skeletonButton, { flex: 1, marginRight: 5 }]} />
-                <View style={[styles.skeletonButton, { flex: 1, marginLeft: 5 }]} />
+                {/* <View style={[styles.skeletonButton, { flex: 1, marginHorizontal: 5, position: 'relative' }]}>
+                  <View style={[styles.fundIconContainer, { backgroundColor: theme.surfaceSecondary }]}>
+                    <View style={{ width: 30, height: 30, backgroundColor: theme.surfaceSecondary, borderRadius: 15 }} />
+                  </View>
+                </View> */}
               </View>
             </View>
 
@@ -606,7 +660,9 @@ export default function Dashboard() {
           <Text style={styles.greeting}>
             Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
           </Text>
-          <Text style={styles.username}>{profile?.full_name || "User"}</Text>
+          <Text style={styles.username}>
+            {loading ? "Loading..." : profile?.full_name || "User"}
+          </Text>
         </View>
         <TouchableOpacity onPress={() => navigation.navigate("NotificationsScreen")} style={styles.notificationButton}>
           <Ionicons name="notifications-outline" size={24} color={theme.text} />
@@ -645,6 +701,12 @@ export default function Dashboard() {
             <Text style={styles.actionButtonText}>My Wallet</Text>
             <Ionicons name="wallet" size={16} style={styles.actionButtonIcon} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.fundIconContainer}
+            onPress={() => navigation.navigate("FundWallet")}
+          >
+            <Ionicons name="add-circle" size={35} color={theme.primary} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -673,7 +735,7 @@ export default function Dashboard() {
       {!profile?.transaction_pin && (
         <View style={styles.pendingContainer}>
           <Text style={styles.sectionTitle}>Action Required</Text>
-          <TouchableOpacity style={styles.pendingActionCard} onPress={() => navigation.navigate("Profile")}>
+          <TouchableOpacity style={styles.pendingActionCard} onPress={() => navigation.navigate("TransactionPin")}>
             <View style={styles.pendingIcon}>
               <Ionicons name="shield-checkmark" size={20} style={styles.pendingIconColor} />
             </View>
@@ -688,10 +750,12 @@ export default function Dashboard() {
 
       {/* Recent Transactions Header */}
       <View style={styles.transactionsHeader}>
-        <Text style={styles.sectionTitle}>Recent Transactions</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
-          <Text style={styles.seeAllText}>See All</Text>
-        </TouchableOpacity>
+        <Text style={styles.sectionTitles}>Recent Transactions</Text>
+        <View>
+          <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </>
   )
@@ -703,12 +767,14 @@ export default function Dashboard() {
       {/* Fixed Header */}
       <View style={styles.fixedHeader}>
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>
-              Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
-            </Text>
-            <Text style={styles.username}>{profile?.full_name || "User"}</Text>
-          </View>
+                  <View>
+          <Text style={styles.greeting}>
+            Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
+          </Text>
+          <Text style={styles.username}>
+            {loading ? "Loading..." : profile?.full_name || "User"}
+          </Text>
+        </View>
           <TouchableOpacity
             onPress={() => navigation.navigate("NotificationsScreen")}
             style={styles.notificationButton}
@@ -727,7 +793,7 @@ export default function Dashboard() {
         data={transactions}
         keyExtractor={(item) => item.displayId}
         renderItem={({ item }) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.navigate("TransactionDetails", { transaction: item })}
             activeOpacity={0.8}
           >
@@ -810,6 +876,12 @@ export default function Dashboard() {
                   <Text style={styles.actionButtonText}>My Wallet</Text>
                   <Ionicons name="wallet" size={16} style={styles.actionButtonIcon} />
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.fundIconContainer}
+                  onPress={() => navigation.navigate("FundWallet")}
+                >
+                  <Ionicons name="add-circle" size={30} color={theme.primary} />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -838,7 +910,7 @@ export default function Dashboard() {
             {!profile?.transaction_pin && (
               <View style={styles.pendingContainer}>
                 <Text style={styles.sectionTitle}>Action Required</Text>
-                <TouchableOpacity style={styles.pendingActionCard} onPress={() => navigation.navigate("Profile")}>
+                <TouchableOpacity style={styles.pendingActionCard} onPress={() => navigation.navigate("TransactionPin")}>
                   <View style={styles.pendingIcon}>
                     <Ionicons name="shield-checkmark" size={20} style={styles.pendingIconColor} />
                   </View>
@@ -853,10 +925,12 @@ export default function Dashboard() {
 
             {/* Recent Transactions Header */}
             <View style={styles.transactionsHeader}>
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
-              <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
+              <Text style={styles.sectionTitles}>Recent Transactions</Text>
+              <View>
+                <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </>
         }

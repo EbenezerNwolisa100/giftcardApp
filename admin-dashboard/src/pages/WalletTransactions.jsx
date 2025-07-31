@@ -141,8 +141,20 @@ const WalletTransactions = () => {
         .eq('id', selectedTx.id);
       if (error) throw error;
 
-      // If approving a fund transaction, update user balance
-      if (status === 'completed' && selectedTx.type === 'fund') {
+      // If approving a fund transaction, update user balance ONLY for manual transfers
+      // Paystack transactions are already completed and balance already updated
+      if (status === 'completed' && selectedTx.type === 'fund' && selectedTx.payment_method === 'manual_transfer') {
+        // Double-check that this transaction hasn't already been processed
+        const { data: existingTx } = await supabase
+          .from('wallet_transactions')
+          .select('id, status')
+          .eq('id', selectedTx.id)
+          .single();
+        
+        if (!existingTx || existingTx.status === 'completed') {
+          throw new Error('Transaction has already been processed.');
+        }
+        
         const { data: profile } = await supabase
           .from('profiles')
           .select('balance')
@@ -150,12 +162,13 @@ const WalletTransactions = () => {
           .single();
         
         const newBalance = (profile?.balance || 0) + Number(selectedTx.amount);
+        
         const { error: balanceError } = await supabase
           .from('profiles')
           .update({ balance: newBalance })
           .eq('id', selectedTx.user_id);
         
-        if (balanceError) throw balanceError;
+        if (balanceError) throw balanceError
       }
 
       setActionSuccess(`Transaction ${status}.`);

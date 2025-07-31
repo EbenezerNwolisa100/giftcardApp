@@ -330,14 +330,58 @@ export default function NotificationsScreen({ navigation }) {
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
-        <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Loading notifications...</Text>
+  // Notifications Skeleton Component
+  const NotificationsSkeleton = () => (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+
+      {/* Fixed Header Skeleton */}
+      <View
+        style={{
+          borderBottomColor: theme.border,
+          shadowColor: theme.shadow,
+          paddingHorizontal: 10,
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 45,
+          paddingBottom: 5,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          zIndex: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={{ width: 24, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 12 }} />
+        <View style={{ width: 120, height: 24, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+        <View style={{ width: 32, height: 32 }} />
       </View>
-    )
+
+      {/* Notification Cards Skeleton */}
+      <View style={[styles.listContainer, { paddingTop: 120 }]}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <View key={i} style={[styles.notificationCard, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
+            <View style={styles.notificationContent}>
+              <View style={[styles.notificationIcon, { backgroundColor: theme.surfaceSecondary }]}>
+                <View style={{ width: 20, height: 20, backgroundColor: theme.surfaceSecondary, borderRadius: 10 }} />
+              </View>
+              <View style={styles.notificationText}>
+                <View style={{ width: 140, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 4 }} />
+                <View style={{ width: 200, height: 14, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 8 }} />
+                <View style={{ width: 80, height: 12, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
+              </View>
+              <View style={{ width: 8, height: 8, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginTop: 4 }} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  if (loading) {
+    return <NotificationsSkeleton />;
   }
 
   return (
@@ -440,20 +484,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 16,
-  },
+
 
   listContainer: {
     paddingHorizontal: 16,
     marginTop: -110,
-    paddingBottom: 32,
+    paddingBottom: 20, // Reduced since tab bar is now relative positioned
   },
   notificationCard: {
     borderRadius: 16,
