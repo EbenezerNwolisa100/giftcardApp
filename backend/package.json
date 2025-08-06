@@ -1,0 +1,28 @@
+{
+  "name": "giftcard-app-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Gift Card App with Flutterwave integration",
+  "main": "flutterwave-api.js",
+  "scripts": {
+    "start": "node flutterwave-api.js",
+    "dev": "nodemon flutterwave-api.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.6.0",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "flutterwave",
+    "payment",
+    "api",
+    "express"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+} 

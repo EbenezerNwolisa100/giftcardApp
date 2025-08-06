@@ -29,7 +29,7 @@ const STATUS_COLORS = {
 
 const PAYMENT_METHOD_LABELS = {
   wallet: "Wallet",
-  paystack: "Paystack",
+  flutterwave: "Flutterwave",
   manual_transfer: "Manual Transfer",
 }
 
@@ -81,7 +81,7 @@ export default function Transactions({ navigation }) {
         .from("giftcard_transactions")
         .select(
           `
-          id, type, status, created_at, amount, total, rate, payment_method, proof_of_payment_url, paystack_reference,
+          id, type, status, created_at, amount, total, rate, payment_method, proof_of_payment_url, flutterwave_reference,
           brand_id, brand_name, variant_id, variant_name, card_code, image_url, rejection_reason, quantity, buy_brand_id, card_codes,
           sell_brand:brand_id (name, image_url),
           sell_variant:variant_id (name),
@@ -134,7 +134,7 @@ export default function Transactions({ navigation }) {
             isBuy && Array.isArray(tx.card_codes) && tx.card_codes.length > 0 ? tx.card_codes.join(", ") : tx.card_code,
           paymentMethod: tx.payment_method,
           proofUrl: tx.proof_of_payment_url,
-          paystackRef: tx.paystack_reference,
+          flutterwaveRef: tx.flutterwave_reference,
           quantity: tx.quantity,
           rate: tx.rate,
           amount: tx.amount,

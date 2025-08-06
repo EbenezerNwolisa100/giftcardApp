@@ -8,13 +8,13 @@ The wallet system allows users to fund their wallet and use the funds to purchas
 
 ### 1. Wallet Management
 - **View Balance**: Users can see their current wallet balance
-- **Fund Wallet**: Multiple payment methods (Paystack, Manual Bank Transfer)
+- **Fund Wallet**: Multiple payment methods (Flutterwave, Manual Bank Transfer)
 - **Transaction History**: Complete history of all wallet transactions
 - **Balance Visibility Toggle**: Hide/show balance for privacy
 
 ### 2. Payment Methods
 - **Wallet Payment**: Use wallet funds for instant purchases
-- **Paystack**: External payment processor for funding
+- **Flutterwave**: External payment processor for funding
 - **Manual Bank Transfer**: Transfer to admin account with proof upload
 
 ### 3. Transaction Types
@@ -53,7 +53,7 @@ CREATE TABLE wallet_transactions (
 
 ### 2. Fund Wallet Screen (`screens/FundWallet.js`)
 - Amount input for funding
-- Payment method selection (Paystack/Manual Transfer)
+- Payment method selection (Flutterwave/Manual Transfer)
 - Bank details display for manual transfers
 - Proof of payment upload
 - Real-time feedback and status updates
@@ -91,9 +91,9 @@ CREATE TABLE wallet_transactions (
 
 ### Funding Flow
 1. User enters amount to fund
-2. Selects payment method (Paystack/Manual Transfer)
-3. For Paystack:
-   - Simulate payment (integrate real Paystack API)
+2. Selects payment method (Flutterwave/Manual Transfer)
+3. For Flutterwave:
+- Simulate payment (integrate real Flutterwave API)
    - Create completed wallet transaction
    - Update user balance
 4. For Manual Transfer:
@@ -177,10 +177,10 @@ Ensure admin bank details are set up in the `admin_bank_details` table for manua
 
 ## API Integration
 
-### Paystack Integration
-To integrate real Paystack payments:
+### Flutterwave Integration
+To integrate real Flutterwave payments:
 
-1. Add Paystack SDK to your project
+1. Add Flutterwave SDK to your project
 2. Replace the simulated payment in `FundWallet.js`
 3. Handle webhook notifications for payment confirmation
 4. Update transaction status based on payment result
@@ -209,7 +209,7 @@ Set up webhook endpoints to handle:
 
 ### Test Cases
 1. **Wallet Funding**:
-   - Test Paystack payment flow
+   - Test Flutterwave payment flow
    - Test manual transfer with proof upload
    - Test insufficient balance scenarios
 

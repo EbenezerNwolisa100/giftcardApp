@@ -16,6 +16,7 @@ import GiftcardInventory from './pages/GiftcardInventory';
 import SupportRequests from './pages/SupportRequests';
 import BankDetails from './pages/BankDetails';
 import Settings from './pages/Settings'
+import './App.css';
 
 function App() {
   const [email, setEmail] = useState('');
@@ -24,6 +25,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState(null);
   const [checkingRole, setCheckingRole] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Handle login form submission
   const handleLogin = async (e) => {
@@ -70,48 +72,93 @@ function App() {
     setError('');
   };
 
+  // Toggle sidebar for mobile
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   if (!session) {
     return (
       <Router>
         <Routes>
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={
-            <div className="container d-flex align-items-center justify-content-center min-vh-100">
-              <div className="card p-4 shadow" style={{ minWidth: 350 }}>
-                <h2 className="mb-4 text-center">Admin Login</h2>
-                <form onSubmit={handleLogin}>
-                  <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email address</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      id="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                      autoFocus
-                    />
+            <div className="min-vh-100 d-flex align-items-center justify-content-center" 
+                 style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+              <div className="container">
+                <div className="row justify-content-center">
+                  <div className="col-md-6 col-lg-4">
+                    <div className="card shadow-lg border-0 rounded-3">
+                      <div className="card-body p-5">
+                        <div className="text-center mb-4">
+                          <div className="d-inline-flex align-items-center justify-content-center bg-primary rounded-circle mb-3" 
+                               style={{width: '60px', height: '60px'}}>
+                            <i className="bi bi-shield-lock text-white fs-4"></i>
+                          </div>
+                          <h3 className="fw-bold text-dark mb-2">GiftYard Admin</h3>
+                          <p className="text-muted">Access your admin dashboard</p>
+                        </div>
+                        
+                        <form onSubmit={handleLogin}>
+                          <div className="mb-3">
+                            <label htmlFor="email" className="form-label fw-semibold text-dark">
+                              Email Address
+                            </label>
+                            <input
+                              type="email"
+                              className="form-control form-control-lg border-2"
+                              id="email"
+                              value={email}
+                              onChange={e => setEmail(e.target.value)}
+                              required
+                              autoFocus
+                              placeholder="Enter your email"
+                            />
+                          </div>
+                          
+                          <div className="mb-4">
+                            <label htmlFor="password" className="form-label fw-semibold text-dark">
+                              Password
+                            </label>
+                            <input
+                              type="password"
+                              className="form-control form-control-lg border-2"
+                              id="password"
+                              value={password}
+                              onChange={e => setPassword(e.target.value)}
+                              required
+                              placeholder="Enter your password"
+                            />
+                          </div>
+                          
+                          {error && (
+                            <div className="alert alert-danger border-0 rounded-3 mb-4">
+                              <i className="bi bi-exclamation-triangle me-2"></i>
+                              {error}
+                            </div>
+                          )}
+                          
+                          <button
+                            type="submit"
+                            disabled={loading || checkingRole}
+                            className="btn btn-primary btn-lg w-100 rounded-3 fw-semibold"
+                          >
+                            {(loading || checkingRole) ? (
+                              <div className="d-flex align-items-center justify-content-center">
+                                <div className="spinner-border spinner-border-sm me-2" role="status">
+                                  <span className="visually-hidden">Loading...</span>
+                                </div>
+                                Logging in...
+                              </div>
+                            ) : (
+                              'Sign In'
+                            )}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label htmlFor="password" className="form-label">Password</label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      id="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {error && <div className="alert alert-danger py-2">{error}</div>}
-                  <button
-                    type="submit"
-                    className="btn btn-primary w-100"
-                    disabled={loading || checkingRole}
-                  >
-                    {(loading || checkingRole) ? 'Logging in...' : 'Login'}
-                  </button>
-                </form>
+                </div>
               </div>
             </div>
           } />
@@ -122,14 +169,17 @@ function App() {
 
   return (
     <Router>
-      <div className="d-flex">
-        {/* Sidebar for md+ screens */}
-        <div className="d-none d-md-block">
-          <Sidebar />
-        </div>
-        <div className="flex-grow-1" style={{marginLeft: 220}}>
-          <Header handleLogout={handleLogout} />
-          <main>
+      <div className="d-flex vh-100">
+        {/* Sidebar */}
+        <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+        
+        {/* Main Content */}
+        <div className="flex-grow-1 d-flex flex-column main-content">
+          <Header handleLogout={handleLogout} toggleSidebar={toggleSidebar} />
+          <main className="flex-grow-1 overflow-auto" style={{ 
+            marginTop: '70px', 
+            padding: '1rem'
+          }}>
             <Routes>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/users" element={<Users />} />

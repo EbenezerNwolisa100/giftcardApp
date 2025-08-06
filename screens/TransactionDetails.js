@@ -55,7 +55,7 @@ export default function TransactionDetails({ route, navigation }) {
 
   const PAYMENT_METHOD_LABELS = {
     wallet: "Wallet",
-    paystack: "Paystack",
+    flutterwave: "Flutterwave",
     manual_transfer: "Manual Transfer",
     bank_transfer: "Bank Transfer",
     card: "Card Payment",
@@ -335,8 +335,8 @@ export default function TransactionDetails({ route, navigation }) {
                   "Payment Method",
                   PAYMENT_METHOD_LABELS[transaction.paymentMethod] || transaction.paymentMethod,
                 )}
-              {transaction.paystackRef &&
-                renderDetailRow("Paystack Reference", transaction.paystackRef, true, "Paystack Reference")}
+              {transaction.flutterwaveRef &&
+  renderDetailRow("Flutterwave Reference", transaction.flutterwaveRef, true, "Flutterwave Reference")}
               {transaction.proofUrl && renderDetailRow("Proof of Payment", "Uploaded")}
             </>
           )}

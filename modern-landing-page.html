@@ -96,6 +96,7 @@
             overflow: hidden;
             border-radius: 16px;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         
         .showcase-item:hover {
@@ -118,57 +119,191 @@
         .showcase-item:hover .showcase-overlay {
             transform: translateY(0);
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            position: relative;
+            max-width: 95%;
+            max-height: 95%;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-image {
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: white;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+
+        .modal-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            color: white;
+            padding: 2rem;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body class="antialiased">
 
     <!-- Header & Navigation -->
-    <header class="py-6 px-4 md:px-8 lg:px-16 sticky top-0 z-50 bg-[#0d0d0d] bg-opacity-80 backdrop-blur-sm">
-        <nav class="container mx-auto flex justify-between items-center">
-            <a href="#" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">GiftCardPro</a>
-            <div class="hidden md:flex space-x-6 text-sm font-medium">
-                <a href="#features" class="hover:text-blue-400 transition-colors">Features</a>
-                <a href="#platform" class="hover:text-blue-400 transition-colors">Platform</a>
-                <a href="#pricing" class="hover:text-blue-400 transition-colors">Pricing</a>
-                <a href="#contact" class="hover:text-blue-400 transition-colors">Contact</a>
-            </div>
-            <a href="#pricing" class="btn-primary text-white py-2 px-4 rounded-full text-sm font-semibold">Get Started</a>
+    <header class="fixed top-3 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-6xl px-4 md:px-1 ">
+        <nav class="bg-[#0d0d0d] bg-opacity-95 backdrop-blur-md border border-gray-800 rounded-2xl px-6 py-4 flex justify-between items-center shadow-2xl">
+            <a href="#" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">GiftYard</a>
+            <a href="https://wa.me/2349039675336?text=Hi%20GiftCardPro!%20I'm%20interested%20in%20your%20platform.%20Can%20we%20discuss%20pricing%20and%20negotiate%20a%20deal?" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                </svg>
+                <span>Negotiate</span>
+            </a>
         </nav>
     </header>
 
     <!-- Hero Section -->
-    <section class="min-h-screen flex items-center justify-center text-center p-8 relative overflow-hidden hero-gradient">
+    <section class="min-h-screen flex items-center justify-center p-8 relative overflow-hidden pt-32 hero-gradient">
         <!-- Floating shapes as a design element -->
         <div class="absolute inset-0 z-0">
             <div class="absolute w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-20 top-10 left-20 animate-pulse"></div>
             <div class="absolute w-52 h-52 bg-blue-500 rounded-full blur-3xl opacity-20 bottom-10 right-20 animate-pulse-slow"></div>
             <div class="absolute w-32 h-32 bg-pink-500 rounded-full blur-3xl opacity-20 top-1/3 right-1/4 animate-pulse"></div>
         </div>
-        <div class="z-10 max-w-4xl mx-auto">
-            <h1 class="text-5xl md:text-7xl font-extrabold leading-tight tracking-tighter text-white">
+        
+        <div class="container mx-auto max-w-6xl z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <!-- Text Content -->
+                <div class="text-left">
+                    <h1 class="text-5xl md:text-6xl font-extrabold leading-tight tracking-tighter text-white mb-6">
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
-                    Own Your
+                            Complete Gift Card
                 </span>
-                Gift Card Empire
+                        <br>
+                        Platform for Sale
             </h1>
-            <p class="mt-6 text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-                Complete white-label gift card trading platform. Ready to deploy, fully customizable, and profitable from day one. Start your digital business journey today.
-            </p>
-            <div class="mt-10 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                <a href="#pricing" class="btn-primary text-white font-bold py-3 px-8 rounded-full shadow-lg">Get Started</a>
-                <a href="#platform" class="text-blue-300 font-semibold py-3 px-8 transition-colors hover:text-blue-400">
+                    <p class="text-lg md:text-xl text-gray-300 mb-8 leading-relaxed">
+                        Brand new, fully developed gift card trading platform ready for immediate deployment. Complete source code, admin dashboard, and mobile app included. Start your business instantly.
+                    </p>
+                    
+                    <!-- Feature highlights -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">React Native Mobile App</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Admin Dashboard</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Payment Integration</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300">Cloud Infrastructure</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                        <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'm%20interested%20in%20buying%20your%20complete%20gift%20card%20platform.%20Can%20we%20discuss%20the%20details%20and%20pricing?" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           class="btn-primary text-white font-bold py-4 px-8 rounded-full shadow-lg text-lg">Buy Platform</a>
+                        <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'd%20like%20to%20see%20a%20demo%20of%20your%20gift%20card%20platform%20before%20making%20a%20decision.%20Can%20you%20show%20me%20how%20it%20works?" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           class="text-blue-300 font-semibold py-4 px-8 transition-colors hover:text-blue-400 text-lg border border-blue-300 rounded-full hover:bg-blue-300 hover:bg-opacity-10">
                     View Demo &rarr;
                 </a>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <div class="relative z-10">
+                        <img src="landingPageImages/completePurchase.png" alt="Complete Purchase Flow" class="w-full md:w-4/5 lg:w-3/4 xl:w-2/3 h-auto rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-300 mx-auto">
+                    </div>
+                    <!-- Floating elements around the image -->
+                    <div class="absolute -top-4 -right-4 w-20 h-20 bg-green-500 rounded-full opacity-20 animate-pulse"></div>
+                    <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-blue-500 rounded-full opacity-20 animate-pulse-slow"></div>
+                    <div class="absolute top-1/2 -left-8 w-12 h-12 bg-purple-500 rounded-full opacity-20 animate-pulse"></div>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Features Section -->
     <section id="features" class="py-20 px-8 text-center bg-[#0d0d0d]">
-        <div class="container mx-auto">
-            <h2 class="text-4xl font-bold text-gray-100">Why Choose Our Platform?</h2>
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-4xl font-bold text-gray-100">Why Buy This Platform?</h2>
             <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
-                From React Native mobile app to comprehensive admin dashboard, we provide everything you need to succeed.
+                Complete, ready-to-deploy solution with everything you need to start your gift card business immediately.
             </p>
 
             <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -209,7 +344,7 @@
                     </div>
                     <h3 class="text-xl font-bold text-white">Payment Integration</h3>
                     <p class="mt-2 text-gray-400">
-                        Integrated Paystack payment gateway with WebView implementation and multiple payment options for users.
+                        Integrated Flutterwave payment gateway with WebView implementation and multiple payment options for users.
                     </p>
                 </div>
                 <!-- Feature Card 5 -->
@@ -237,70 +372,178 @@
     </section>
 
     <!-- Platform Showcase -->
-    <section id="platform" class="py-20 px-8 text-center bg-[#0d0d0d]">
-        <div class="container mx-auto">
-            <h2 class="text-4xl font-bold text-gray-100">Platform Showcase</h2>
+    <section id="platform" class="py-20 px-8 bg-[#0d0d0d]">
+        <div class="container mx-auto max-w-6xl">
+            <div class="text-center mb-16">
+                            <h2 class="text-4xl font-bold text-gray-100">Platform Preview</h2>
             <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
-                See our platform in action with real screenshots from the mobile app and admin dashboard.
+                See what you'll get - complete screenshots of the mobile app and admin dashboard included in your purchase.
             </p>
+            </div>
 
-            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Showcase Item 1 -->
+            <!-- Hero Section 1: Login -->
+            <div class="mb-32 flex flex-col lg:flex-row items-center gap-12">
+                <div class="lg:w-1/2">
+                    <h3 class="text-3xl font-bold text-white mb-6">Secure User Authentication</h3>
+                    <p class="text-lg text-gray-300 mb-6">
+                        Our platform features a robust login system with advanced security measures. Users can securely access their accounts with email verification, two-factor authentication, and encrypted password protection.
+                    </p>
+                    <ul class="space-y-3 text-gray-400">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Email verification system
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Two-factor authentication
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Encrypted password protection
+                        </li>
+                    </ul>
+                </div>
+                <div class="lg:w-1/2">
                 <div class="showcase-item">
-                    <img src="landingPageImages/IMG-20250731-WA0022.jpg" alt="Mobile App Interface" class="w-full h-64 object-cover">
-                    <div class="showcase-overlay">
-                        <h4 class="text-xl font-bold mb-2">Mobile App</h4>
-                        <p class="text-sm">Modern React Native interface with intuitive user experience</p>
+                        <img src="landingPageImages/login.png" alt="Login Screen" class="w-full md:w-4/5 lg:w-3/4 xl:w-2/3 h-auto object-contain rounded-2xl shadow-2xl mx-auto">
                     </div>
                 </div>
-                <!-- Showcase Item 2 -->
+            </div>
+
+            <!-- Hero Section 2: Dashboard -->
+            <div class="mb-32 flex flex-col lg:flex-row-reverse items-center gap-12">
+                <div class="lg:w-1/2">
+                    <h3 class="text-3xl font-bold text-white mb-6">Comprehensive Dashboard</h3>
+                    <p class="text-lg text-gray-300 mb-6">
+                        The main dashboard provides users with a complete overview of their gift card trading activities. Real-time statistics, recent transactions, and quick access to all platform features.
+                    </p>
+                    <ul class="space-y-3 text-gray-400">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Real-time statistics and analytics
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Recent transaction history
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Quick access to all features
+                        </li>
+                    </ul>
+                </div>
+                <div class="lg:w-1/2">
                 <div class="showcase-item">
-                    <img src="landingPageImages/IMG-20250731-WA0021.jpg" alt="Admin Dashboard" class="w-full h-64 object-cover">
-                    <div class="showcase-overlay">
-                        <h4 class="text-xl font-bold mb-2">Admin Dashboard</h4>
-                        <p class="text-sm">Comprehensive management panel with real-time analytics</p>
+                        <img src="landingPageImages/dashboard.png" alt="Dashboard Screen" class="w-full md:w-4/5 lg:w-3/4 xl:w-2/3 h-auto object-contain rounded-2xl shadow-2xl mx-auto">
                     </div>
                 </div>
-                <!-- Showcase Item 3 -->
+            </div>
+
+            <!-- Hero Section 3: Rates -->
+            <div class="mb-32 flex flex-col lg:flex-row items-center gap-12">
+                <div class="lg:w-1/2">
+                    <h3 class="text-3xl font-bold text-white mb-6">Live Rate Calculator</h3>
+                    <p class="text-lg text-gray-300 mb-6">
+                        Our advanced rate calculator provides real-time pricing for all gift card brands. Users can compare rates, calculate potential earnings, and make informed trading decisions.
+                    </p>
+                    <ul class="space-y-3 text-gray-400">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Real-time rate updates
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Multiple gift card brands
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Instant profit calculation
+                        </li>
+                    </ul>
+                </div>
+                <div class="lg:w-1/2">
                 <div class="showcase-item">
-                    <img src="landingPageImages/IMG-20250731-WA0020.jpg" alt="Payment System" class="w-full h-64 object-cover">
-                    <div class="showcase-overlay">
-                        <h4 class="text-xl font-bold mb-2">Payment System</h4>
-                        <p class="text-sm">Secure payment processing with multiple gateway options</p>
+                        <img src="landingPageImages/rates.png" alt="Rates Calculator Screen" class="w-full md:w-4/5 lg:w-3/4 xl:w-2/3 h-auto object-contain rounded-2xl shadow-2xl mx-auto">
                     </div>
                 </div>
-                <!-- Showcase Item 4 -->
+            </div>
+
+            <!-- Hero Section 4: Complete Purchase -->
+            <div class="mb-32 flex flex-col lg:flex-row-reverse items-center gap-12">
+                <div class="lg:w-1/2">
+                    <h3 class="text-3xl font-bold text-white mb-6">Seamless Purchase Process</h3>
+                    <p class="text-lg text-gray-300 mb-6">
+                        The complete purchase flow ensures a smooth and secure transaction experience. From gift card selection to payment confirmation, every step is optimized for user convenience.
+                    </p>
+                    <ul class="space-y-3 text-gray-400">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Multiple payment options
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Secure transaction processing
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Instant order confirmation
+                        </li>
+                    </ul>
+                </div>
+                <div class="lg:w-1/2">
                 <div class="showcase-item">
-                    <img src="landingPageImages/IMG-20250731-WA0019.jpg" alt="User Interface" class="w-full h-64 object-cover">
-                    <div class="showcase-overlay">
-                        <h4 class="text-xl font-bold mb-2">User Interface</h4>
-                        <p class="text-sm">Clean and modern design with excellent user experience</p>
+                        <img src="landingPageImages/completePurchase.png" alt="Complete Purchase Screen" class="w-full md:w-4/5 lg:w-3/4 xl:w-2/3 h-auto object-contain rounded-2xl shadow-2xl mx-auto">
                     </div>
                 </div>
-                <!-- Showcase Item 5 -->
-                <div class="showcase-item">
-                    <img src="landingPageImages/IMG-20250731-WA0018.jpg" alt="Transaction Management" class="w-full h-64 object-cover">
-                    <div class="showcase-overlay">
-                        <h4 class="text-xl font-bold mb-2">Transaction Management</h4>
-                        <p class="text-sm">Efficient transaction processing and management system</p>
                     </div>
+
+            <!-- Hero Section 5: Full Dashboard -->
+            <div class="mb-32 flex flex-col lg:flex-row items-center gap-12">
+                <div class="lg:w-1/2">
+                    <h3 class="text-3xl font-bold text-white mb-6">Complete Admin Dashboard</h3>
+                    <p class="text-lg text-gray-300 mb-6">
+                        The comprehensive admin dashboard provides complete control over your gift card platform. Monitor transactions, manage users, and track business performance in real-time.
+                    </p>
+                    <ul class="space-y-3 text-gray-400">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Advanced analytics and reporting
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            User management system
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-green-400 mr-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            Real-time transaction monitoring
+                        </li>
+                    </ul>
                 </div>
-                <!-- Showcase Item 6 -->
+                <div class="lg:w-1/2">
                 <div class="showcase-item">
-                    <img src="landingPageImages/IMG-20250731-WA0017.jpg" alt="Security Features" class="w-full h-64 object-cover">
-                    <div class="showcase-overlay">
-                        <h4 class="text-xl font-bold mb-2">Security Features</h4>
-                        <p class="text-sm">Advanced security measures and fraud prevention</p>
+                        <img src="landingPageImages/fullDashboard.png" alt="Full Admin Dashboard" class="w-full md:w-4/5 lg:w-3/4 xl:w-2/3 h-auto object-contain rounded-2xl shadow-2xl mx-auto">
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <span class="close-modal">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" class="modal-image" src="" alt="">
+            <div class="modal-title">
+                <h4 id="modalTitle" class="text-xl font-bold mb-2"></h4>
+                <p id="modalDescription" class="text-sm"></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Stats Section -->
     <section class="py-20 px-8 text-center bg-[#0d0d0d]">
-        <div class="container mx-auto">
-            <h2 class="text-4xl font-bold text-gray-100">Our Success by the Numbers</h2>
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-4xl font-bold text-gray-100">Platform Investment Value</h2>
             <div class="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 <!-- Stat Card 1 -->
                 <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
@@ -309,18 +552,18 @@
                 </div>
                 <!-- Stat Card 2 -->
                 <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
-                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500" data-target="8">6-8</div>
-                    <p class="mt-2 text-gray-300">Weeks to Launch</p>
+                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500" data-target="0">0</div>
+                    <p class="mt-2 text-gray-300">Days to Launch</p>
                 </div>
                 <!-- Stat Card 3 -->
                 <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
-                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-500" data-target="300">300%</div>
-                    <p class="mt-2 text-gray-300">Average ROI</p>
+                    <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-500" data-target="100">100%</div>
+                    <p class="mt-2 text-gray-300">Complete Solution</p>
                 </div>
                 <!-- Stat Card 4 -->
                 <div class="p-6 rounded-2xl bg-[#1a1a1a] shadow-lg">
                     <div class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-green-500" data-target="24">24/7</div>
-                    <p class="mt-2 text-gray-300">Automated Operations</p>
+                    <p class="mt-2 text-gray-300">Ready to Deploy</p>
                 </div>
             </div>
         </div>
@@ -328,10 +571,10 @@
 
     <!-- Pricing Section -->
     <section id="pricing" class="py-20 px-8 text-center bg-[#0d0d0d]">
-        <div class="container mx-auto">
-            <h2 class="text-4xl font-bold text-gray-100">Choose Your Path to Success</h2>
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-4xl font-bold text-gray-100">Platform Purchase Options</h2>
             <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
-                Two flexible options to get you started with your gift card empire.
+                Choose how you want to acquire this complete gift card trading platform.
             </p>
 
             <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-4xl mx-auto">
@@ -365,7 +608,10 @@
                             Installation & setup service
                         </li>
                     </ul>
-                    <a href="#contact" class="btn-primary mt-8 block w-full py-3 rounded-full font-bold">Get Full Ownership</a>
+                    <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'm%20interested%20in%20the%20full%20ownership%20option%20for%20₦2M.%20Can%20we%20discuss%20the%20details?" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       class="btn-primary mt-8 block w-full py-3 rounded-full font-bold">Get Full Ownership</a>
                 </div>
 
                 <!-- Pricing Card 2: Installment Plan (Featured) -->
@@ -399,7 +645,10 @@
                             Priority technical support
                         </li>
                     </ul>
-                    <a href="#contact" class="btn-primary mt-8 block w-full py-3 rounded-full font-bold">Start Installment Plan</a>
+                    <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'm%20interested%20in%20the%20installment%20plan%20option%20for%20₦500K%20monthly.%20Can%20we%20discuss%20the%20terms?" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       class="btn-primary mt-8 block w-full py-3 rounded-full font-bold">Start Installment Plan</a>
                 </div>
             </div>
         </div>
@@ -407,14 +656,20 @@
 
     <!-- Call to Action Section -->
     <section class="py-20 px-8 text-center bg-gradient-to-r from-purple-800 to-indigo-900">
-        <div class="container mx-auto">
-            <h2 class="text-4xl font-bold text-white">Ready to Launch Your Gift Card Empire?</h2>
+        <div class="container mx-auto max-w-6xl">
+            <h2 class="text-4xl font-bold text-white">Ready to Own This Platform?</h2>
             <p class="mt-4 text-gray-200 max-w-2xl mx-auto">
-                Join successful entrepreneurs who have transformed their business with our platform. Start your journey today!
+                This complete gift card trading platform is ready for immediate deployment. Don't miss this opportunity to start your business instantly!
             </p>
             <div class="mt-8 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                <a href="#contact" class="btn-primary text-white font-bold py-3 px-8 rounded-full shadow-lg">Request Demo</a>
-                <a href="#contact" class="text-blue-300 font-semibold py-3 px-8 transition-colors hover:text-blue-400">
+                <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'd%20like%20to%20request%20a%20demo%20of%20your%20gift%20card%20platform%20before%20making%20a%20purchase%20decision." 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="btn-primary text-white font-bold py-3 px-8 rounded-full shadow-lg">Request Demo</a>
+                <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'm%20ready%20to%20discuss%20purchasing%20your%20gift%20card%20platform.%20Can%20we%20talk%20about%20pricing%20and%20terms?" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="text-blue-300 font-semibold py-3 px-8 transition-colors hover:text-blue-400">
                     Contact Sales &rarr;
                 </a>
             </div>
@@ -422,54 +677,33 @@
     </section>
 
     <!-- Footer -->
-    <footer id="contact" class="py-12 px-8 bg-[#0d0d0d] border-t border-gray-800 text-gray-400">
-        <div class="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-center md:text-left">
-            <div>
-                <a href="#" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">GiftCardPro</a>
-                <p class="mt-4 text-sm">Complete white-label gift card trading platform solution. Ready for deployment with full customization options and proven profitability.</p>
+    <footer id="contact" class="py-8 px-8 bg-[#0d0d0d] border-t border-gray-800 text-gray-400">
+        <div class="container mx-auto max-w-6xl text-center">
+            <div class="mb-6">
+                <a href="#" class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">GiftYard</a>
+                <p class="mt-4 text-sm max-w-2xl mx-auto">Complete white-label gift card trading platform for sale. Brand new, ready for immediate deployment with full source code and customization options.</p>
             </div>
-            <div>
-                <h4 class="text-lg font-semibold text-white mb-4">Platform</h4>
-                <ul class="space-y-2 text-sm">
-                    <li><a href="#features" class="hover:text-blue-400 transition-colors">Features</a></li>
-                    <li><a href="#platform" class="hover:text-blue-400 transition-colors">Showcase</a></li>
-                    <li><a href="#pricing" class="hover:text-blue-400 transition-colors">Pricing</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Documentation</a></li>
-                </ul>
+            
+            <div class="flex justify-center items-center space-x-6 mb-6">
+                <a href="https://wa.me/2349039675336?text=Hi%20GiftYard!%20I'm%20interested%20in%20your%20platform." 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="text-gray-400 hover:text-green-400 transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                    </svg>
+                </a>
+                <a href="mailto:sales@giftyard.ng" class="text-gray-400 hover:text-blue-400 transition-colors">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                    </svg>
+                </a>
             </div>
-            <div>
-                <h4 class="text-lg font-semibold text-white mb-4">Support</h4>
-                <ul class="space-y-2 text-sm">
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Technical Support</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">Installation Guide</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">API Documentation</a></li>
-                    <li><a href="#" class="hover:text-blue-400 transition-colors">FAQ</a></li>
-                </ul>
+            
+            <div class="text-sm text-gray-600">
+                &copy; 2024 GiftYard. All rights reserved.
             </div>
-            <div>
-                <h4 class="text-lg font-semibold text-white mb-4">Contact</h4>
-                <ul class="space-y-2 text-sm">
-                    <li class="flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path></svg>
-                        sales@giftcardpro.ng
-                    </li>
-                    <li class="flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
-                        +234 800 PLATFORM
-                    </li>
-                    <li class="flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
-                        Lagos, Nigeria
-                    </li>
-                    <li class="flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
-                        Mon-Fri 9AM-6PM
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <div class="mt-12 text-center text-sm text-gray-600">
-            &copy; 2024 GiftCardPro Platform. All rights reserved. Complete Platform Solution for Entrepreneurs.
         </div>
     </footer>
     
@@ -530,6 +764,50 @@
                 const speed = 0.5 + (index * 0.1);
                 shape.style.transform = `translateY(${scrolled * speed}px)`;
             });
+        });
+
+        // Image modal functionality
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDescription = document.getElementById('modalDescription');
+        const closeModal = document.querySelector('.close-modal');
+
+        // Add click event listeners to showcase items
+        document.querySelectorAll('.showcase-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const img = this.querySelector('img');
+                
+                modalImage.src = img.src;
+                modalImage.alt = img.alt;
+                modalTitle.textContent = img.alt;
+                modalDescription.textContent = 'Click to view full size image';
+                
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            });
+        });
+
+        // Close modal when clicking the close button
+        closeModal.addEventListener('click', function() {
+            modal.classList.remove('show');
+            document.body.style.overflow = ''; // Restore scrolling
+        });
+
+        // Close modal when clicking outside the image
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('show')) {
+                modal.classList.remove('show');
+                document.body.style.overflow = '';
+            }
         });
     </script>
 </body>

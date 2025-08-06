@@ -411,7 +411,7 @@ export default function TransactionPin({ navigation }) {
 
         {/* Form Container Skeleton */}
         <View style={styles.formContainer}>
-          {/* Input Containers Skeletons */}
+        {/* Input Containers Skeletons */}
           {hasPin && (
             <View style={styles.inputContainer}>
               <View style={{ width: 120, height: 16, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 8 }} />
@@ -441,7 +441,7 @@ export default function TransactionPin({ navigation }) {
             </View>
           </View>
 
-          {/* PIN Requirements Skeleton */}
+        {/* PIN Requirements Skeleton */}
           <View style={[styles.requirementsContainer, { backgroundColor: theme.surfaceSecondary }]}>
             <View style={{ width: 140, height: 14, backgroundColor: theme.surfaceSecondary, borderRadius: 4, marginBottom: 12 }} />
             <View style={styles.requirement}>
@@ -458,7 +458,7 @@ export default function TransactionPin({ navigation }) {
             </View>
           </View>
 
-          {/* Save Button Skeleton */}
+        {/* Save Button Skeleton */}
           <View style={[styles.saveButton, { backgroundColor: theme.surfaceSecondary }]}>
             <View style={{ width: 120, height: 18, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
           </View>

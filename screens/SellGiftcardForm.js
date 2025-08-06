@@ -579,7 +579,7 @@ export default function SellGiftcardForm() {
             </View>
           </View>
 
-          {/* Submit Button Skeleton */}
+        {/* Submit Button Skeleton */}
           <View style={[styles.submitButton, { backgroundColor: theme.surfaceSecondary }]}>
             <View style={{ width: 140, height: 18, backgroundColor: theme.surfaceSecondary, borderRadius: 4 }} />
           </View>

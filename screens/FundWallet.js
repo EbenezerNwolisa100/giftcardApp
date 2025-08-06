@@ -26,16 +26,16 @@ import { useTheme } from "./ThemeContext"
 
 const { width, height } = Dimensions.get("window")
 
-// Paystack Configuration
-const PAYSTACK_PUBLIC_KEY = "pk_test_2ba7130b0b7d2c18f74f7276a255f5e419962f9b" // Replace with your actual test public key
-const PAYSTACK_SECRET_KEY = "sk_test_1e844224e04d7839ecb15be9cf2a063a8c1feadf" // Replace with your actual test secret key
+// Flutterwave Configuration
+const FLUTTERWAVE_PUBLIC_KEY = "FLWPUBK_TEST-5ffda8e1c4628295ae1144e4c4a88109-X" // Replace with your actual test public key
+const FLUTTERWAVE_SECRET_KEY = "FLWSECK_TEST-969dac723950b37a2474e82bad8c5e06-X" // Replace with your actual test secret key
 
 export default function FundWallet() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState("paystack")
+  const [paymentMethod, setPaymentMethod] = useState("flutterwave")
   const [loading, setLoading] = useState(false)
-  const [paystackLoading, setPaystackLoading] = useState(false)
-  const [showPaystackModal, setShowPaystackModal] = useState(false)
+  const [flutterwaveLoading, setFlutterwaveLoading] = useState(false)
+  const [showFlutterwaveModal, setShowFlutterwaveModal] = useState(false)
   const [bankDetails, setBankDetails] = useState(null)
   const [bankDetailsLoading, setBankDetailsLoading] = useState(false)
   const [proofImage, setProofImage] = useState(null)
@@ -43,12 +43,14 @@ export default function FundWallet() {
   const [processingFee, setProcessingFee] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [showFeeDetails, setShowFeeDetails] = useState(false)
-  const [isProcessingPaystack, setIsProcessingPaystack] = useState(false)
+  const [isProcessingFlutterwave, setIsProcessingFlutterwave] = useState(false)
   
-  // Paystack WebView states
-  const [showPaystackWebView, setShowPaystackWebView] = useState(false)
-  const [paystackUrl, setPaystackUrl] = useState("")
-  const [paystackReference, setPaystackReference] = useState("")
+  // Flutterwave WebView states
+  const [showFlutterwaveWebView, setShowFlutterwaveWebView] = useState(false)
+  const [flutterwaveUrl, setFlutterwaveUrl] = useState("")
+  const [flutterwaveReference, setFlutterwaveReference] = useState("")
+  const [alternativeFlutterwaveUrl, setAlternativeFlutterwaveUrl] = useState("")
+  const [legacyFlutterwaveUrl, setLegacyFlutterwaveUrl] = useState("")
 
   const navigation = useNavigation()
   const { theme, isDarkTheme } = useTheme()
@@ -109,48 +111,69 @@ export default function FundWallet() {
     }
   }
 
-  const generatePaystackUrl = async (amount, email) => {
-    const reference = `ps_ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const generateFlutterwavePayment = async (amount, email) => {
+    const reference = `fw_ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const fee = processingFee || 0 // Ensure processing fee is not undefined
     const totalAmount = amount + fee
     
-    // Create Paystack payment URL with proper encoding
-    const params = new URLSearchParams({
-      amount: (totalAmount * 100).toString(), // Paystack expects amount in kobo
-      email: email,
-      reference: reference,
-      currency: 'NGN',
-      'metadata[amount]': amount.toString(),
-      'metadata[processing_fee]': fee.toString(),
-      'metadata[total_amount]': totalAmount.toString()
-    })
-    
-    const paystackUrl = `https://checkout.paystack.com/${PAYSTACK_PUBLIC_KEY}?${params.toString()}`
-    
-    console.log("Generated Paystack URL:", paystackUrl) // Debug log
-    
-    return { paystackUrl, reference }
+    try {
+      // Call your PHP backend API to initialize Flutterwave payment
+      const response = await fetch('http://localhost:8000/flutterwave-api.php/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: totalAmount,
+          email: email,
+          reference: reference,
+          metadata: {
+            amount: amount.toString(),
+            processing_fee: fee.toString(),
+            total_amount: totalAmount.toString()
+          }
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log("Flutterwave payment initialized:", data);
+        return {
+          paymentUrl: data.data.payment_url,
+          reference: reference
+        };
+      } else {
+        throw new Error(data.error || 'Failed to initialize payment');
+      }
+    } catch (error) {
+      console.error('Error initializing Flutterwave payment:', error);
+      throw error;
+    }
   }
 
-  const handlePaystack = async () => {
+  const handleFlutterwave = async () => {
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       Alert.alert("Error", "Please enter a valid amount.")
       return
     }
-    if (paystackLoading || isProcessingPaystack) {
+    if (flutterwaveLoading || isProcessingFlutterwave) {
       return;
     }
     
-    // Validate Paystack public key
-    if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY === "pk_test_...") {
-      Alert.alert("Error", "Paystack public key not configured. Please check your configuration.")
+    // Validate Flutterwave public key
+    if (!FLUTTERWAVE_PUBLIC_KEY || FLUTTERWAVE_PUBLIC_KEY === "FLWPUBK_TEST-...") {
+      Alert.alert("Error", "Flutterwave public key not configured. Please check your configuration.")
       return
     }
     
-    setIsProcessingPaystack(true)
-    setPaystackLoading(true)
-    setShowPaystackModal(false)
-    setFeedback("Initializing Paystack payment...")
+    console.log("Using Flutterwave public key:", FLUTTERWAVE_PUBLIC_KEY)
+    console.log("Flutterwave public key length:", FLUTTERWAVE_PUBLIC_KEY.length)
+    
+    setIsProcessingFlutterwave(true)
+    setFlutterwaveLoading(true)
+    setShowFlutterwaveModal(false)
+    setFeedback("Initializing Flutterwave payment...")
 
     try {
       const {
@@ -160,19 +183,20 @@ export default function FundWallet() {
       
       const enteredAmount = Number(amount) || 0
       
-      // Generate Paystack payment URL
-      const { paystackUrl, reference } = await generatePaystackUrl(enteredAmount, user.email)
+      // Generate Flutterwave payment URL
+      const { paymentUrl, reference } = await generateFlutterwavePayment(enteredAmount, user.email)
       
       console.log("User email:", user.email) // Debug log
       console.log("Amount:", enteredAmount) // Debug log
       console.log("Processing fee:", processingFee) // Debug log
+      console.log("Payment URL:", paymentUrl) // Debug log
       
       // Store reference for verification
-      setPaystackReference(reference)
-      setPaystackUrl(paystackUrl)
+      setFlutterwaveReference(reference)
+      setFlutterwaveUrl(paymentUrl)
       
-      // Show Paystack WebView
-      setShowPaystackWebView(true)
+      // Show Flutterwave WebView
+      setShowFlutterwaveWebView(true)
       setFeedback("")
       
       // For debugging - you can check the console to see the generated URL
@@ -181,8 +205,8 @@ export default function FundWallet() {
       setFeedback("")
       Alert.alert("Error", e.message || "Failed to initialize payment.")
     } finally {
-      setPaystackLoading(false)
-      setIsProcessingPaystack(false)
+      setFlutterwaveLoading(false)
+      setIsProcessingFlutterwave(false)
     }
   }
 
@@ -191,23 +215,26 @@ export default function FundWallet() {
     console.log("WebView URL:", url) // Debug log
     
     // Only process if we have a reference to track
-    if (!paystackReference) return
+    if (!flutterwaveReference) return
     
-    // Check for Paystack error pages
+    // Check for Flutterwave error pages
     if (url.includes('error') || url.includes('failed') || url.includes('invalid')) {
-      console.log("Paystack error detected in URL:", url)
+      console.log("Flutterwave error detected in URL:", url)
       handlePaymentFailure("Payment failed - please try again")
       return
     }
     
-    // For testing purposes, let's detect when user is on the Paystack success page
-    // In production, you'd verify with Paystack API
-    if (url.includes('paystack.com/success') || url.includes('transaction/success')) {
+    // Check for Flutterwave success/cancel patterns
+    // Flutterwave typically redirects to success/cancel URLs with status parameters
+    if (url.includes('status=successful') || url.includes('status=success')) {
       // Payment successful - verify and process
       handlePaymentSuccess()
-    } else if (url.includes('paystack.com/cancel') || url.includes('transaction/cancel')) {
+    } else if (url.includes('status=cancelled') || url.includes('status=cancel')) {
       // Payment cancelled
       handlePaymentFailure("Payment was cancelled")
+    } else if (url.includes('status=failed')) {
+      // Payment failed
+      handlePaymentFailure("Payment failed")
     }
     // Don't process other URLs - let user complete the payment flow
   }
@@ -216,8 +243,24 @@ export default function FundWallet() {
     try {
       setFeedback("Payment successful! Verifying transaction...")
       
-      // Here you would typically verify the payment with Paystack API
-      // For now, we'll simulate success
+      // Verify the payment with your PHP backend API
+      const verificationResponse = await fetch('http://localhost:8000/flutterwave-api.php/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reference: flutterwaveReference
+        })
+      });
+      
+      const verificationData = await verificationResponse.json();
+      
+      if (!verificationData.success) {
+        throw new Error(verificationData.error || 'Payment verification failed');
+      }
+      
+      console.log('Payment verified:', verificationData.data);
       
       const {
         data: { user },
@@ -235,20 +278,21 @@ export default function FundWallet() {
           amount: enteredAmount,
           fee: fee,
           status: "completed",
-          payment_method: "paystack",
-          reference: paystackReference,
-          description: `Wallet funded via Paystack (fee: ₦${fee})`,
+          payment_method: "flutterwave",
+          reference: flutterwaveReference,
+          flutterwave_reference: flutterwaveReference,
+          description: `Wallet funded via Flutterwave (fee: ₦${fee})`,
         },
       ]).select().single()
       
       if (txError) throw txError
       
       // Close WebView and navigate to success
-      setShowPaystackWebView(false)
+      setShowFlutterwaveWebView(false)
       navigation.navigate("FundingResult", { 
         success: true,
         amount: enteredAmount,
-        paymentMethod: "paystack"
+        paymentMethod: "flutterwave"
       })
       
     } catch (e) {
@@ -257,7 +301,7 @@ export default function FundWallet() {
   }
 
   const handlePaymentFailure = (errorMessage = "Payment was cancelled or failed") => {
-    setShowPaystackWebView(false)
+    setShowFlutterwaveWebView(false)
     setFeedback("")
     Alert.alert("Payment Failed", errorMessage)
   }
@@ -858,21 +902,21 @@ export default function FundWallet() {
               <TouchableOpacity
                 style={[
                   styles.methodButton,
-                  paymentMethod === "paystack" && styles.methodButtonActive,
+                  paymentMethod === "flutterwave" && styles.methodButtonActive,
                 ]}
                 onPress={() => {
-                  setPaymentMethod("paystack")
-                  setFeedback("You selected Paystack. You will pay the total amount (including fee) online and your wallet will be credited with the entered amount instantly.")
+                  setPaymentMethod("flutterwave")
+                  setFeedback("You selected Flutterwave. You will pay the total amount (including fee) online and your wallet will be credited with the entered amount instantly.")
                 }}
               >
-                <Ionicons name="card" size={24} color={paymentMethod === "paystack" ? theme.primary : theme.text} />
+                <Ionicons name="card" size={24} color={paymentMethod === "flutterwave" ? theme.primary : theme.text} />
                 <Text
                   style={[
                     styles.methodButtonText,
-                    paymentMethod === "paystack" && styles.methodButtonTextActive,
+                    paymentMethod === "flutterwave" && styles.methodButtonTextActive,
                   ]}
                 >
-                  Paystack
+                  Flutterwave
                 </Text>
               </TouchableOpacity>
 
@@ -981,28 +1025,28 @@ export default function FundWallet() {
 
 
           {/* Submit Button */}
-          {paymentMethod === "paystack" ? (
+          {paymentMethod === "flutterwave" ? (
             <TouchableOpacity
-              style={[styles.submitButton, loading || paystackLoading || isProcessingPaystack ? styles.submitButtonDisabled : null]}
+              style={[styles.submitButton, loading || flutterwaveLoading || isProcessingFlutterwave ? styles.submitButtonDisabled : null]}
               onPress={() => {
-                if (!isProcessingPaystack) {
-                  setShowPaystackModal(true)
+                if (!isProcessingFlutterwave) {
+                  setShowFlutterwaveModal(true)
                 }
               }}
-              disabled={loading || paystackLoading || isProcessingPaystack}
+              disabled={loading || flutterwaveLoading || isProcessingFlutterwave}
               activeOpacity={0.8}
             >
-              <Text style={styles.submitButtonText}>Pay with Paystack</Text>
+              <Text style={styles.submitButtonText}>Pay with Flutterwave</Text>
               <Ionicons name="arrow-forward" size={20} color={theme.primary} style={styles.buttonIcon} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={[styles.submitButton, loading || paystackLoading ? styles.submitButtonDisabled : null]}
+              style={[styles.submitButton, loading || flutterwaveLoading ? styles.submitButtonDisabled : null]}
               onPress={handleManualTransfer}
-              disabled={loading || paystackLoading}
+              disabled={loading || flutterwaveLoading}
               activeOpacity={0.8}
             >
-              {loading || paystackLoading ? (
+              {loading || flutterwaveLoading ? (
                 <ActivityIndicator color={theme.primary} size="small" />
               ) : (
                 <>
@@ -1013,37 +1057,37 @@ export default function FundWallet() {
             </TouchableOpacity>
           )}
 
-          {/* Paystack Modal */}
+          {/* Flutterwave Modal */}
           <Modal 
-            isVisible={showPaystackModal} 
-            onBackdropPress={() => setShowPaystackModal(false)}
+            isVisible={showFlutterwaveModal} 
+            onBackdropPress={() => setShowFlutterwaveModal(false)}
           >
             <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Pay with Paystack</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Pay with Flutterwave</Text>
               <Text style={[styles.modalText, { color: theme.textSecondary }]}>
-                This is a demo popup. Integrate your Paystack payment here.
+                This is a demo popup. Integrate your Flutterwave payment here.
               </Text>
-              {paystackLoading ? (
+              {flutterwaveLoading ? (
                 <ActivityIndicator color={theme.accent} size="large" />
               ) : (
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: theme.accent }]}
-                  onPress={handlePaystack}
-                  disabled={paystackLoading || isProcessingPaystack}
-                  activeOpacity={paystackLoading || isProcessingPaystack ? 0.5 : 0.8}
+                  onPress={handleFlutterwave}
+                  disabled={flutterwaveLoading || isProcessingFlutterwave}
+                  activeOpacity={flutterwaveLoading || isProcessingFlutterwave ? 0.5 : 0.8}
                 >
-                  <Text style={[styles.modalButtonText, { color: theme.textContrast }]}>Simulate Paystack Payment</Text>
+                  <Text style={[styles.modalButtonText, { color: theme.textContrast }]}>Simulate Flutterwave Payment</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={() => setShowPaystackModal(false)}>
+              <TouchableOpacity onPress={() => setShowFlutterwaveModal(false)}>
                 <Text style={[styles.modalCancel, { color: theme.accent }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </Modal>
 
-          {/* Paystack WebView */}
+          {/* Flutterwave WebView */}
           <Modal 
-            isVisible={showPaystackWebView} 
+            isVisible={showFlutterwaveWebView} 
             style={{ margin: 0 }}
             animationIn="slideInUp"
             animationOut="slideOutDown"
@@ -1052,15 +1096,15 @@ export default function FundWallet() {
               <View style={styles.webViewHeader}>
                 <TouchableOpacity
                   style={styles.webViewCloseButton}
-                  onPress={() => setShowPaystackWebView(false)}
+                  onPress={() => setShowFlutterwaveWebView(false)}
                 >
                   <Ionicons name="close" size={24} color={theme.text} />
                 </TouchableOpacity>
-                <Text style={[styles.webViewTitle, { color: theme.text }]}>Paystack Payment</Text>
+                <Text style={[styles.webViewTitle, { color: theme.text }]}>Flutterwave Payment</Text>
                 <View style={{ width: 40 }} />
               </View>
               <WebView
-                source={{ uri: paystackUrl }}
+                source={{ uri: flutterwaveUrl }}
                 style={styles.webView}
                 onNavigationStateChange={handleWebViewNavigationStateChange}
                 onError={(syntheticEvent) => {
@@ -1073,15 +1117,29 @@ export default function FundWallet() {
                   console.log('WebView HTTP error:', nativeEvent)
                   handlePaymentFailure("Payment page error")
                 }}
+                onLoadStart={() => {
+                  console.log('WebView started loading:', flutterwaveUrl)
+                }}
+                onLoadEnd={() => {
+                  console.log('WebView finished loading')
+                  // Check if the page has content
+                  setTimeout(() => {
+                    console.log('Checking if Flutterwave page loaded properly...')
+                  }, 2000)
+                }}
+                onMessage={(event) => {
+                  console.log('WebView message:', event.nativeEvent.data)
+                }}
                 startInLoadingState={true}
                 renderLoading={() => (
                   <View style={styles.webViewLoading}>
                     <ActivityIndicator size="large" color={theme.accent} />
                     <Text style={[styles.webViewLoadingText, { color: theme.text }]}>
-                      Loading Paystack...
+                      Loading Flutterwave...
                     </Text>
                   </View>
                 )}
+                userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
               />
               {/* Test buttons for development */}
               <View style={styles.testButtonContainer}>
@@ -1099,6 +1157,41 @@ export default function FundWallet() {
                   }}
                 >
                   <Text style={styles.testButtonText}>Set Test Amount (₦100)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.error }]}
+                  onPress={() => {
+                    // Test with a simple HTML page to verify WebView works
+                    const testUrl = 'https://httpbin.org/html'
+                    setFlutterwaveUrl(testUrl)
+                    console.log('Testing WebView with:', testUrl)
+                  }}
+                >
+                  <Text style={styles.testButtonText}>Test WebView (HTTPBin)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.secondary }]}
+                  onPress={() => {
+                    // Try the alternative Flutterwave URL
+                    if (alternativeFlutterwaveUrl) {
+                      setFlutterwaveUrl(alternativeFlutterwaveUrl)
+                      console.log('Trying alternative Flutterwave URL:', alternativeFlutterwaveUrl)
+                    }
+                  }}
+                >
+                  <Text style={styles.testButtonText}>Try Alternative Flutterwave URL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.accent }]}
+                  onPress={() => {
+                    // Try the legacy Flutterwave URL
+                    if (legacyFlutterwaveUrl) {
+                      setFlutterwaveUrl(legacyFlutterwaveUrl)
+                      console.log('Trying legacy Flutterwave URL:', legacyFlutterwaveUrl)
+                    }
+                  }}
+                >
+                  <Text style={styles.testButtonText}>Try Legacy Flutterwave URL</Text>
                 </TouchableOpacity>
               </View>
             </View>

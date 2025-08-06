@@ -62,15 +62,15 @@ export default function Register({ navigation }) {
     setLoading(true)
     
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
       
-      if (error) {
-        Alert.alert("Registration Error", error.message)
-        return
-      }
+    if (error) {
+      Alert.alert("Registration Error", error.message)
+      return
+    }
 
       // If registration is successful, create the profile immediately
       if (data.user) {
@@ -87,29 +87,29 @@ export default function Register({ navigation }) {
         if (profileError) {
           console.error("Profile creation error:", profileError)
           // Still store pending name as fallback
-          await AsyncStorage.setItem("pending_name", name)
+    await AsyncStorage.setItem("pending_name", name)
         } else {
           // Clear any existing pending name since profile was created successfully
           await AsyncStorage.removeItem("pending_name")
         }
       }
 
-      Alert.alert(
-        "Success",
-        "Registration successful! Please check your email to confirm your account before logging in.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setName("")
-              setEmail("")
-              setPassword("")
-              setConfirmPassword("")
-              navigation.navigate("Login")
-            },
+    Alert.alert(
+      "Success",
+      "Registration successful! Please check your email to confirm your account before logging in.",
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            setName("")
+            setEmail("")
+            setPassword("")
+            setConfirmPassword("")
+            navigation.navigate("Login")
           },
-        ],
-      )
+        },
+      ],
+    )
     } catch (error) {
       console.error("Registration error:", error)
       Alert.alert("Registration Error", "An unexpected error occurred. Please try again.")

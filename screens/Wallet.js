@@ -147,10 +147,10 @@ export default function Wallet() {
       // Don't show alert on every error, just log it
       // Alert.alert("Error", "Failed to load wallet data")
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+    setLoading(false)
+    setRefreshing(false)
       setIsFetching(false)
-    }
+  }
   }, []) // Remove isFetching from dependency array to prevent infinite loop
 
   useFocusEffect(

@@ -21,6 +21,8 @@ const Users = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
+  const [roleFilter, setRoleFilter] = useState("all")
+  const [sortBy, setSortBy] = useState("created_at")
   const [selectedUser, setSelectedUser] = useState(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [userDetails, setUserDetails] = useState(null)
@@ -39,7 +41,7 @@ const Users = () => {
     email: "",
     balance: "",
     role: "",
-    transaction_pin: "", // Assuming this is a string or boolean
+    transaction_pin: "",
     bank_name: "",
     account_number: "",
     account_name: "",
@@ -64,11 +66,32 @@ const Users = () => {
     fetchUsers()
   }, [])
 
-  const filteredUsers = users.filter(
-    (u) =>
+  // Enhanced filtering and sorting logic
+  const filteredUsers = users
+    .filter((u) => {
+      // Search filter
+      const searchMatch = !search || 
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase()),
-  )
+        u.email?.toLowerCase().includes(search.toLowerCase())
+      
+      // Role filter
+      const roleMatch = roleFilter === "all" || u.role === roleFilter
+      
+      return searchMatch && roleMatch
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "full_name":
+          return (a.full_name || "").localeCompare(b.full_name || "")
+        case "email":
+          return (a.email || "").localeCompare(b.email || "")
+        case "balance":
+          return (Number(a.balance) || 0) - (Number(b.balance) || 0)
+        case "created_at":
+        default:
+          return new Date(b.created_at) - new Date(a.created_at)
+      }
+    })
 
   const openUser = async (user) => {
     setSelectedUser(user)
@@ -96,7 +119,6 @@ const Users = () => {
         .eq("user_id", user.id)
         .single()
       if (bankError && bankError.code !== "PGRST116") {
-        // PGRST116 means no rows found, which is fine
         console.warn("No bank details found or error fetching bank details:", bankError.message)
       }
       setUserBank(bank)
@@ -155,7 +177,6 @@ const Users = () => {
       if (error) throw error
       setUserDetails({ ...userDetails, role: makeAdmin ? "admin" : "user" })
       setActionSuccess(`User is now ${makeAdmin ? "an admin" : "a regular user"}.`)
-      // Update in main list
       setUsers((users) =>
         users.map((u) => (u.id === userDetails.id ? { ...u, role: makeAdmin ? "admin" : "user" } : u)),
       )
@@ -191,7 +212,6 @@ const Users = () => {
         .eq("id", selectedUser.id)
       if (error) throw error
       setActionSuccess(`Balance corrected to ₦${newBalance.toLocaleString()}`)
-      // Refresh user details
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -206,7 +226,6 @@ const Users = () => {
     setActionLoading(false)
   }
 
-  // Helper to get brand name for transactions
   const getTransactionBrandName = (tx) => {
     if (tx.type === "sell") {
       return tx.sell_brand?.name || "-"
@@ -216,15 +235,13 @@ const Users = () => {
     return "-"
   }
 
-  // --- Edit User Modal Functions ---
   const openEditModal = async (user) => {
     setEditingUser(user)
     setEditError("")
     setEditSuccess("")
-    setEditLoading(true) // Set loading for fetching bank details
+    setEditLoading(true)
 
     try {
-      // Fetch bank info for the user being edited
       const { data: bank, error: bankError } = await supabase
         .from("user_banks")
         .select("bank_name, account_number, account_name")
@@ -232,7 +249,6 @@ const Users = () => {
         .single()
 
       if (bankError && bankError.code !== "PGRST116") {
-        // PGRST116 means no rows found, which is fine
         console.warn("No bank details found or error fetching bank details for edit:", bankError.message)
       }
 
@@ -282,7 +298,6 @@ const Users = () => {
     setEditSuccess("")
 
     try {
-      // 1. Update profiles table
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -290,14 +305,13 @@ const Users = () => {
           email: editForm.email.trim(),
           balance: Number(editForm.balance),
           role: editForm.role,
-          transaction_pin: editForm.transaction_pin.trim() || null, // Allow null for empty pin
+          transaction_pin: editForm.transaction_pin.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingUser.id)
 
       if (profileError) throw profileError
 
-      // 2. Update user_banks table
       const hasBankDetailsInForm =
         editForm.bank_name.trim() || editForm.account_number.trim() || editForm.account_name.trim()
 
@@ -308,7 +322,6 @@ const Users = () => {
         .single()
 
       if (fetchBankError && fetchBankError.code !== "PGRST116") {
-        // PGRST116 means no rows found, which is fine
         throw fetchBankError
       }
 
@@ -320,27 +333,23 @@ const Users = () => {
           updated_at: new Date().toISOString(),
         }
         if (existingBank) {
-          // Update existing bank details
           const { error: updateBankError } = await supabase
             .from("user_banks")
             .update(bankData)
             .eq("user_id", editingUser.id)
           if (updateBankError) throw updateBankError
         } else {
-          // Insert new bank details
           const { error: insertBankError } = await supabase
             .from("user_banks")
             .insert({ user_id: editingUser.id, ...bankData })
           if (insertBankError) throw insertBankError
         }
       } else if (existingBank) {
-        // No bank details in form, but existing in DB, so delete them
         const { error: deleteBankError } = await supabase.from("user_banks").delete().eq("user_id", editingUser.id)
         if (deleteBankError) throw deleteBankError
       }
 
       setEditSuccess("User updated successfully!")
-      // Update the user in the main list and in the details modal if it's open
       setUsers((prevUsers) =>
         prevUsers.map((u) =>
           u.id === editingUser.id
@@ -355,12 +364,9 @@ const Users = () => {
             : u,
         ),
       )
-      // Re-fetch user details and bank info for the details modal to ensure consistency
       if (selectedUser && selectedUser.id === editingUser.id) {
-        await openUser(editingUser) // Re-open user details to refresh all data
+        await openUser(editingUser)
       }
-      // Optionally close modal after success or let user close it
-      // closeEditModal();
     } catch (err) {
       setEditError("Failed to update user: " + (err?.message || ""))
     }
@@ -368,70 +374,168 @@ const Users = () => {
   }
 
   return (
-    <div className="container-fluid py-4">
-      <h2 className="mb-4">Users</h2>
-      <div className="mb-3 row">
-        <div className="col-md-4">
+    <div style={{ 
+      fontFamily: 'Inter, sans-serif', 
+      width: '100%', 
+      overflowX: 'hidden',
+      maxWidth: '100vw'
+    }}>
+      {/* Header */}
+      {/* <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="mb-1 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>Users</h2>
+          <p className="text-muted mb-0" style={{ fontFamily: 'Inter, sans-serif' }}>Manage user accounts and permissions</p>
+        </div>
+      </div> */}
+      <div className="row mb-4 g-3 align-items-end" style={{ width: '100%', margin: '0', padding: '0 15px' }}>
+        <div className="col-8 col-md-4" style={{ padding: '0 7.5px' }}>
+          <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Search</label>
           <input
             type="text"
             className="form-control"
             placeholder="Search by name or email"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
           />
         </div>
+        <div className="col-6 col-md-2" style={{ padding: '0 7.5px' }}>
+          <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Role</label>
+          <select
+            className="form-select"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+          >
+            <option value="all">All Roles</option>
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div className="col-12 col-md-2" style={{ padding: '0 7.5px' }}>
+          <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Sort by</label>
+          <select
+            className="form-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+          >
+            <option value="created_at">Date Created</option>
+            <option value="full_name">Name</option>
+            <option value="email">Email</option>
+            <option value="balance">Balance</option>
+          </select>
+        </div>
       </div>
+
+      {/* Users Table */}
       {loading ? (
-        <div className="text-center py-5">
+        <div className="text-start py-5" style={{ padding: '0 15px' }}>
           <div className="spinner-border text-primary" role="status"></div>
+          <span className="ms-2">Loading users...</span>
         </div>
       ) : error ? (
-        <div className="alert alert-danger my-4">{error}</div>
+        <div className="alert alert-danger my-4" style={{ margin: '0 15px' }}>{error}</div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-hover table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Balance</th>
-                <th>Created At</th>
-                <th></th>
+        <div style={{ padding: '0 15px' }}>
+          <div className="card border shadow-sm" style={{ backgroundColor: '#ffffff', borderRadius: '0' }}>
+            <div className="card-body p-0">
+              <div className="table-container">
+                <table className="table table-hover mb-0" style={{ 
+                  fontFamily: 'Inter, sans-serif', 
+                  width: '100%', 
+                  minWidth: '1000px',
+                  tableLayout: 'fixed'
+                }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '20%', fontFamily: 'Inter, sans-serif' }}>Name</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '25%', fontFamily: 'Inter, sans-serif' }}>Email</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '12%', fontFamily: 'Inter, sans-serif' }}>Role</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '15%', fontFamily: 'Inter, sans-serif' }}>Balance</th>
+                      <th className="px-3 py-3 fw-semibold d-none d-md-table-cell text-start" style={{ width: '15%', fontFamily: 'Inter, sans-serif' }}>Created At</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '13%', fontFamily: 'Inter, sans-serif' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center">
+                        <td colSpan="6" className="text-start py-5 text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No users found
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.full_name}</td>
-                    <td>{u.email}</td>
-                    <td>
-                      <span className={`badge bg-${u.role === "admin" ? "success" : "secondary"}`}>{u.role}</span>
+                        <tr key={u.id} className="border-bottom">
+                          <td className="px-3 py-3 fw-medium text-start">
+                            <div className="text-truncate" style={{ fontFamily: 'Inter, sans-serif' }} title={u.full_name}>
+                              {u.full_name || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <div className="text-truncate" style={{ fontFamily: 'Inter, sans-serif' }} title={u.email}>
+                              {u.email || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <span className={`badge ${u.role === "admin" ? "bg-success" : "bg-secondary"}`} style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
+                              {u.role || 'user'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 fw-semibold text-start">
+                            <div className="text-truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              ₦{Number(u.balance || 0).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-muted d-none d-md-table-cell text-start">
+                            <div className="text-truncate" style={{ fontFamily: 'Inter, sans-serif' }} title={formatDate(u.created_at)}>
+                              {formatDate(u.created_at)}
+                            </div>
                     </td>
-                    <td>₦{Number(u.balance).toLocaleString()}</td>
-                    <td>{formatDate(u.created_at)}</td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary me-2" onClick={() => openUser(u)}>
+                          <td className="px-3 py-3 text-start">
+                            <div className="d-flex gap-1 flex-wrap">
+                              <button 
+                                className="btn btn-sm btn-outline-primary" 
+                                onClick={() => openUser(u)}
+                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                              >
                         View
                       </button>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => openEditModal(u)}>
+                              <button 
+                                className="btn btn-sm btn-outline-secondary" 
+                                onClick={() => openEditModal(u)}
+                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                              >
                         Edit
                       </button>
+                            </div>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+              </div>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Pagination */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 gap-3" style={{ padding: '0 15px' }}>
+        <div className="text-muted text-start" style={{ fontFamily: 'Inter, sans-serif' }}>
+          Showing {filteredUsers.length} of {users.length} users
+        </div>
+        <div className="d-flex gap-2">
+          <button className="btn btn-outline-secondary btn-sm" style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
+            <i className="bi bi-chevron-left"></i>
+          </button>
+          <button className="btn btn-outline-secondary btn-sm" style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
+            <i className="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
       {/* User Details Modal */}
       {selectedUser && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.3)" }}>
@@ -543,7 +647,7 @@ const Users = () => {
                                   <tr key={tx.id}>
                                     <td>{formatDate(tx.created_at)}</td>
                                     <td>{tx.type?.charAt(0).toUpperCase() + tx.type?.slice(1)}</td>
-                                    <td>{getTransactionBrandName(tx)}</td> {/* Use the new helper */}
+                                    <td>{getTransactionBrandName(tx)}</td>
                                     <td>₦{Number(tx.total || tx.amount).toLocaleString()}</td>
                                     <td>
                                       <span

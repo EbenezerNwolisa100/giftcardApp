@@ -1,8 +1,8 @@
 #root {
-  max-width: 1280px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 0rem;
+  text-align: left;
 }
 
 .logo {
@@ -34,9 +34,74 @@
 }
 
 .card {
-  padding: 2em;
+  padding: 0;
 }
 
 .read-the-docs {
   color: #888;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 767.98px) {
+  /* Hide sidebar margin on mobile */
+  .main-content {
+    margin-left: 0 !important;
+  }
+  
+  /* Adjust header margin on mobile */
+  .main-header {
+    margin-left: 0 !important;
+  }
+  
+  /* Show sidebar on mobile when open */
+  .sidebar-mobile-open {
+    transform: translateX(0) !important;
+  }
+  
+  /* Hide sidebar on mobile by default */
+  .sidebar-mobile-closed {
+    transform: translateX(-100%) !important;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  .main-content {
+    margin-left: 260px !important;
+  }
+  
+  .main-header {
+    margin-left: 260px !important;
+  }
+  
+  .sidebar-mobile-open,
+  .sidebar-mobile-closed {
+    transform: translateX(0) !important;
+  }
+}
+
+/* Table scrolling containment */
+.table-container {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
+  position: relative !important;
+  border: none !important;
+}
+
+.table-container table {
+  margin: 0 !important;
+  border-collapse: collapse !important;
+}
+
+/* Prevent page-level horizontal scroll */
+body, html {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Ensure main content doesn't overflow */
+.main-content {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
 }

@@ -197,8 +197,8 @@ export default function FundingResult() {
 
   const getPaymentMethodLabel = (method) => {
     switch (method) {
-      case "paystack":
-        return "Paystack"
+      case "flutterwave":
+        return "Flutterwave"
       case "manual_transfer":
         return "Bank Transfer"
       default:

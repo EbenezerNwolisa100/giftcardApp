@@ -346,7 +346,7 @@ export default function SellGiftcardVariants() {
         {/* Variants List Skeletons */}
         <View style={styles.variantsContainer}>
           <View style={[styles.sectionTitle, { backgroundColor: theme.surfaceSecondary, width: 150, height: 18 }]} />
-          {[1, 2, 3].map((i) => (
+        {[1, 2, 3].map((i) => (
             <View key={i} style={[styles.variantCard, { backgroundColor: theme.surfaceSecondary }]}>
               <View style={styles.variantContent}>
                 <View style={styles.variantInfo}>

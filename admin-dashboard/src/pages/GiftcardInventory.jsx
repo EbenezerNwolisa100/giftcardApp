@@ -1,321 +1,3 @@
-// import React, { useEffect, useState } from 'react';
-// import { supabase } from '../supabaseClient';
-
-// const GiftcardInventory = () => {
-//   // Data states
-//   const [inventory, setInventory] = useState([]);
-//   const [categories, setCategories] = useState([]);
-
-//   // UI states
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState('');
-//   const [success, setSuccess] = useState('');
-//   const [showBrandForm, setShowBrandForm] = useState(false);
-//   const [openBrand, setOpenBrand] = useState(null); // brand_name
-//   const [addingBrand, setAddingBrand] = useState(false);
-//   const [addingVariant, setAddingVariant] = useState(false);
-
-//   // Brand form state
-//   const [brandForm, setBrandForm] = useState({
-//     brand_name: '',
-//     category_id: '',
-//     image_file: null,
-//     image_url: '',
-//   });
-
-//   // Variant form state (per brand)
-//   const [variantForms, setVariantForms] = useState({}); // {brand_name: {variant_name, buy_rate, quantity, codes: []}}
-
-//   useEffect(() => {
-//     fetchInventory();
-//     fetchCategories();
-//   }, []);
-
-//   const fetchInventory = async () => {
-//     setLoading(true);
-//     setError('');
-//     try {
-//       const { data, error } = await supabase
-//         .from('giftcard_inventory')
-//         .select('*')
-//         .order('created_at', { ascending: false });
-//       if (error) throw error;
-//       setInventory(data || []);
-//     } catch {
-//       setError('Failed to load inventory.');
-//     }
-//     setLoading(false);
-//   };
-
-//   const fetchCategories = async () => {
-//     const { data, error } = await supabase.from('giftcard_categories').select('id, name');
-//     if (!error) setCategories(data || []);
-//   };
-
-//   // --- Brand Form Handlers ---
-//   const handleBrandFormChange = (field, value) => {
-//     setBrandForm(prev => ({ ...prev, [field]: value }));
-//   };
-
-//   const handleBrandFileChange = (e) => {
-//     if (e.target.files && e.target.files[0]) {
-//       setBrandForm(prev => ({ ...prev, image_file: e.target.files[0] }));
-//     }
-//   };
-
-//   const handleAddBrand = async (e) => {
-//     e.preventDefault();
-//     if (!brandForm.brand_name.trim() || !brandForm.category_id) return;
-//     setAddingBrand(true);
-//     setError('');
-//     setSuccess('');
-//     let imageUrl = '';
-//     try {
-//       if (brandForm.image_file) {
-//         const ext = brandForm.image_file.name.split('.').pop();
-//         const fileName = `inventory_brand_${Date.now()}_${Math.random().toString(36).substring(2,8)}.${ext}`;
-//         const { error: uploadError } = await supabase.storage.from('giftcard-inventory-images').upload(fileName, brandForm.image_file, { contentType: brandForm.image_file.type });
-//         if (uploadError) throw uploadError;
-//         const { data: publicUrlData } = supabase.storage.from('giftcard-inventory-images').getPublicUrl(fileName);
-//         imageUrl = publicUrlData.publicUrl;
-//       }
-//       // Add a row to giftcard_inventory as the brand root (no code, no variant_name, no buy_rate)
-//       const { error } = await supabase.from('giftcard_inventory').insert({
-//         brand_name: brandForm.brand_name.trim(),
-//         category_id: brandForm.category_id,
-//         image_url: imageUrl || null,
-//       });
-//       if (error) throw error;
-//       setSuccess('Brand added successfully!');
-//       setBrandForm({ brand_name: '', category_id: '', image_file: null, image_url: '' });
-//       setShowBrandForm(false);
-//       fetchInventory();
-//     } catch (err) {
-//       setError('Failed to add brand. ' + (err?.message || ''));
-//     }
-//     setAddingBrand(false);
-//   };
-
-//   // --- Variant Form Handlers ---
-//   const handleVariantFormChange = (brand, field, value) => {
-//     setVariantForms(prev => {
-//       const form = prev[brand] || { variant_name: '', buy_rate: '', quantity: 1, codes: [''] };
-//       if (field === 'quantity') {
-//         const quantity = Math.max(1, parseInt(value) || 1);
-//         const currentCodes = form.codes || [];
-//         const newCodes = [];
-//         for (let i = 0; i < quantity; i++) {
-//           newCodes.push(currentCodes[i] || '');
-//         }
-//         return { ...prev, [brand]: { ...form, quantity, codes: newCodes } };
-//       } else {
-//         return { ...prev, [brand]: { ...form, [field]: value } };
-//       }
-//     });
-//   };
-
-//   const handleVariantCodeChange = (brand, index, value) => {
-//     setVariantForms(prev => {
-//       const form = prev[brand] || { variant_name: '', buy_rate: '', quantity: 1, codes: [''] };
-//       const newCodes = [...(form.codes || [])];
-//       newCodes[index] = value;
-//       return { ...prev, [brand]: { ...form, codes: newCodes } };
-//     });
-//   };
-
-//   const handleAddVariant = async (e, brand) => {
-//     e.preventDefault();
-//     const form = variantForms[brand];
-//     if (!form || !form.variant_name.trim() || !form.buy_rate || !form.quantity) return;
-//     const validCodes = (form.codes || []).filter(code => code.trim() !== '');
-//     if (validCodes.length !== form.quantity) {
-//       setError('Please enter all gift card codes.');
-//       return;
-//     }
-//     setAddingVariant(true);
-//     setError('');
-//     setSuccess('');
-//     try {
-//       // Find the brand root row to get category_id and image_url
-//       const brandRoot = inventory.find(item => item.brand_name === brand && !item.code);
-//       const category_id = brandRoot?.category_id || null;
-//       const image_url = brandRoot?.image_url || null;
-//       // Create inventory items for each code
-//       const inventoryData = validCodes.map(code => ({
-//         brand_name: brand,
-//         category_id,
-//         image_url,
-//         variant_name: form.variant_name.trim(),
-//         buy_rate: Number(form.buy_rate),
-//         code: code.trim(),
-//       }));
-//       const { error } = await supabase.from('giftcard_inventory').insert(inventoryData);
-//       if (error) throw error;
-//       setSuccess(`Variant and ${validCodes.length} gift card(s) added!`);
-//       setVariantForms(prev => ({ ...prev, [brand]: { variant_name: '', buy_rate: '', quantity: 1, codes: [''] } }));
-//       fetchInventory();
-//     } catch (err) {
-//       setError('Failed to add variant. ' + (err?.message || ''));
-//     }
-//     setAddingVariant(false);
-//   };
-
-//   // --- Group inventory by brand_name ---
-//   const brands = Array.from(new Set(inventory.filter(i => i.brand_name).map(i => i.brand_name)));
-
-//   return (
-//     <div className="container py-4" style={{ maxWidth: 1200 }}>
-//       <h2 className="mb-4">Gift Card Inventory Management</h2>
-//       <div className="mb-4">
-//         <button className="btn btn-primary" onClick={() => setShowBrandForm(!showBrandForm)}>
-//           {showBrandForm ? 'Hide Brand Form' : 'Create New Brand'}
-//         </button>
-//       </div>
-//       {showBrandForm && (
-//         <div className="card mb-4">
-//           <div className="card-header">
-//             <h5 className="mb-0">Create New Brand</h5>
-//           </div>
-//           <div className="card-body">
-//             <form className="row g-3" onSubmit={handleAddBrand}>
-//               <div className="col-md-4">
-//                 <label className="form-label">Brand Name</label>
-//                 <input type="text" className="form-control" value={brandForm.brand_name} onChange={e => handleBrandFormChange('brand_name', e.target.value)} required />
-//               </div>
-//               <div className="col-md-4">
-//                 <label className="form-label">Category</label>
-//                 <select className="form-select" value={brandForm.category_id} onChange={e => handleBrandFormChange('category_id', e.target.value)} required>
-//                   <option value="">Select category</option>
-//                   {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-//                 </select>
-//               </div>
-//               <div className="col-md-4">
-//                 <label className="form-label">Brand Image</label>
-//                 <input type="file" accept="image/*" className="form-control" onChange={handleBrandFileChange} />
-//               </div>
-//               <div className="col-12">
-//                 <button className="btn btn-primary" type="submit" disabled={addingBrand}>
-//                   {addingBrand ? 'Adding...' : 'Add Brand'}
-//                 </button>
-//               </div>
-//             </form>
-//           </div>
-//         </div>
-//       )}
-//       {error && <div className="alert alert-danger py-2">{error}</div>}
-//       {success && <div className="alert alert-success py-2">{success}</div>}
-//       {loading ? (
-//         <div className="text-center py-5"><div className="spinner-border text-primary" role="status"></div></div>
-//       ) : (
-//         <div className="brands-container">
-//           {brands.length === 0 ? (
-//             <div className="text-center py-5">
-//               <h5 className="text-muted">No brands found</h5>
-//               <p className="text-muted">Create your first brand to get started</p>
-//             </div>
-//           ) : brands.map(brand => {
-//             const brandRoot = inventory.find(i => i.brand_name === brand && !i.code);
-//             const brandVariants = inventory.filter(i => i.brand_name === brand && i.code);
-//             return (
-//               <div key={brand} className="card mb-3">
-//                 <div className="card-header d-flex justify-content-between align-items-center">
-//                   <h6 className="mb-0">
-//                     {brandRoot?.image_url && <img src={brandRoot.image_url} alt={brand} style={{ width: 30, height: 30, marginRight: 10 }} />}
-//                     {brand}
-//                     <small className="text-muted ms-2">
-//                       ({categories.find(cat => cat.id === brandRoot?.category_id)?.name || 'Unknown Category'})
-//                     </small>
-//                   </h6>
-//                   <button 
-//                     className="btn btn-sm btn-outline-info"
-//                     onClick={() => setOpenBrand(openBrand === brand ? null : brand)}
-//                   >
-//                     {openBrand === brand ? 'Hide Variants' : 'Add Variant'}
-//                   </button>
-//                 </div>
-//                 {/* Variant Form for this brand */}
-//                 {openBrand === brand && (
-//                   <div className="card-body">
-//                     <form className="row g-3" onSubmit={e => handleAddVariant(e, brand)}>
-//                       <div className="col-md-3">
-//                         <label className="form-label">Variant Name</label>
-//                         <input type="text" className="form-control" value={variantForms[brand]?.variant_name || ''} onChange={e => handleVariantFormChange(brand, 'variant_name', e.target.value)} required />
-//                       </div>
-//                       <div className="col-md-2">
-//                         <label className="form-label">Buy Rate</label>
-//                         <input type="number" className="form-control" value={variantForms[brand]?.buy_rate || ''} onChange={e => handleVariantFormChange(brand, 'buy_rate', e.target.value)} required min={0} />
-//                       </div>
-//                       <div className="col-md-2">
-//                         <label className="form-label">Quantity</label>
-//                         <input type="number" className="form-control" value={variantForms[brand]?.quantity || 1} onChange={e => handleVariantFormChange(brand, 'quantity', e.target.value)} required min={1} />
-//                       </div>
-//                       <div className="col-12">
-//                         <label className="form-label">Gift Card Codes</label>
-//                         <div className="row g-2">
-//                           {(variantForms[brand]?.codes || ['']).map((code, idx) => (
-//                             <div key={idx} className="col-md-3">
-//                               <input
-//                                 type="text"
-//                                 className="form-control"
-//                                 placeholder={`Code ${idx + 1}`}
-//                                 value={code}
-//                                 onChange={e => handleVariantCodeChange(brand, idx, e.target.value)}
-//                                 required
-//                               />
-//                             </div>
-//                           ))}
-//                         </div>
-//                       </div>
-//                       <div className="col-12">
-//                         <button className="btn btn-success" type="submit" disabled={addingVariant}>
-//                           {addingVariant ? 'Adding...' : 'Add Variant'}
-//                         </button>
-//                       </div>
-//                     </form>
-//                   </div>
-//                 )}
-//                 {/* List variants for this brand */}
-//                 {brandVariants.length > 0 && (
-//                   <div className="card-body">
-//                     <h6>Variants</h6>
-//                     <div className="table-responsive">
-//                       <table className="table table-sm table-bordered">
-//                         <thead>
-//                           <tr>
-//                             <th>Variant Name</th>
-//                             <th>Buy Rate</th>
-//                             <th>Code</th>
-//                             <th>Created At</th>
-//                           </tr>
-//                         </thead>
-//                         <tbody>
-//                           {brandVariants.map(variant => (
-//                             <tr key={variant.id}>
-//                               <td>{variant.variant_name}</td>
-//                               <td>{variant.buy_rate}</td>
-//                               <td>{variant.code}</td>
-//                               <td>{variant.created_at ? new Date(variant.created_at).toLocaleString() : ''}</td>
-//                             </tr>
-//                           ))}
-//                         </tbody>
-//                       </table>
-//                     </div>
-//                   </div>
-//                 )}
-//               </div>
-//             );
-//           })}
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default GiftcardInventory; 
-
-
-
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -857,15 +539,16 @@ const GiftcardInventory = () => {
   })
 
   return (
-    <div className="container py-4" style={{ maxWidth: 1400 }}>
-      <h2 className="mb-4">Buy Gift Card Inventory Management</h2>
-      <p className="text-muted mb-4">
-        Manage gift card inventory that the platform sells to users. Create brands, add variants, and manage individual
-        gift card codes.
+    <div style={{ fontFamily: 'Inter, sans-serif', width: '100%', overflowX: 'hidden', maxWidth: '100vw' }}>
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4" style={{ padding: '0 15px' }}>
+        <div>
+          <h2 className="mb-1 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>Gift Card Inventory</h2>
+          <p className="text-muted mb-0" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Manage gift card inventory that the platform sells to users
       </p>
-
-      {/* Create Brand Button */}
-      <div className="mb-4">
+        </div>
+        <div className="d-flex gap-2">
         <button
           className="btn btn-primary"
           onClick={() => {
@@ -873,27 +556,41 @@ const GiftcardInventory = () => {
             setEditingBrand(null)
           }}
           disabled={addingBrand}
+            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
         >
-          {showBrandForm ? "Cancel Add Brand" : "Create New Buy Brand"}
+            <i className={`bi ${showBrandForm ? 'bi-x-lg' : 'bi-plus-lg'} me-2`}></i>
+            {showBrandForm ? "Cancel" : "Create New Brand"}
         </button>
         {editingBrand && (
-          <button className="btn btn-secondary ms-2" onClick={() => setEditingBrand(null)}>
-            Cancel Edit Brand
+            <button 
+              className="btn btn-outline-secondary" 
+              onClick={() => setEditingBrand(null)}
+              style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+            >
+              <i className="bi bi-x-lg me-2"></i>
+              Cancel Edit
           </button>
         )}
+        </div>
       </div>
 
       {/* Brand Creation/Editing Form */}
       {(showBrandForm || editingBrand) && (
-        <div className="card mb-4">
-          <div className="card-header">
-            <h5 className="mb-0">{editingBrand ? `Edit Brand: ${editingBrand.name}` : "Create New Buy Brand"}</h5>
+        <div style={{ padding: '0 15px', marginBottom: '2rem' }}>
+          <div className="card border shadow-sm" style={{ backgroundColor: '#ffffff', borderRadius: '0' }}>
+            <div className="card-header bg-light border-bottom">
+              <h5 className="mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <i className={`bi ${editingBrand ? 'bi-pencil' : 'bi-plus-circle'} me-2`}></i>
+                {editingBrand ? `Edit Brand: ${editingBrand.name}` : "Create New Buy Brand"}
+              </h5>
           </div>
-          <div className="card-body">
+            <div className="card-body p-4">
             <form onSubmit={editingBrand ? handleUpdateBrand : handleAddBrand}>
               <div className="row g-3">
                 <div className="col-md-4">
-                  <label className="form-label">Brand Name *</label>
+                    <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Brand Name <span className="text-danger">*</span>
+                    </label>
                   <input
                     type="text"
                     className="form-control"
@@ -905,10 +602,13 @@ const GiftcardInventory = () => {
                     }
                     required
                     placeholder="Enter brand name"
+                      style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                   />
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label">Category *</label>
+                    <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Category <span className="text-danger">*</span>
+                    </label>
                   <select
                     className="form-select"
                     value={editingBrand ? editingBrand.category_id : brandForm.category_id}
@@ -918,6 +618,7 @@ const GiftcardInventory = () => {
                         : handleBrandFormChange("category_id", e.target.value)
                     }
                     required
+                      style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                   >
                     <option value="">Select category</option>
                     {categories.map((cat) => (
@@ -928,95 +629,136 @@ const GiftcardInventory = () => {
                   </select>
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label">Brand Image</label>
+                    <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Brand Image
+                    </label>
                   <input
                     type="file"
                     accept="image/*"
                     className="form-control"
                     onChange={editingBrand ? handleEditBrandFileChange : handleBrandFileChange}
+                      style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                   />
                   {(editingBrand?.image_file || editingBrand?.image_url) && (
+                      <div className="mt-2">
                     <img
                       src={
                         editingBrand?.image_file
                           ? URL.createObjectURL(editingBrand.image_file)
-                          : editingBrand.image_url || "/placeholder.svg"
+                              : editingBrand.image_url
                       }
                       alt="Preview"
-                      style={{ maxWidth: 60, maxHeight: 30, marginTop: 8 }}
+                          style={{ maxWidth: 60, maxHeight: 30, borderRadius: '0' }}
                     />
+                      </div>
                   )}
                   {brandForm.image_file && !editingBrand && (
+                      <div className="mt-2">
                     <img
-                      src={URL.createObjectURL(brandForm.image_file) || "/placeholder.svg"}
+                          src={URL.createObjectURL(brandForm.image_file)}
                       alt="Preview"
-                      style={{ maxWidth: 60, maxHeight: 30, marginTop: 8 }}
+                          style={{ maxWidth: 60, maxHeight: 30, borderRadius: '0' }}
                     />
+                      </div>
                   )}
                 </div>
-                <div className="col-12">
-                  <button className="btn btn-success" type="submit" disabled={addingBrand}>
-                    {addingBrand ? "Processing..." : editingBrand ? "Update Brand" : "Create Buy Brand"}
+                  <div className="col-12 pt-3 border-top">
+                    <button 
+                      className="btn btn-success" 
+                      type="submit" 
+                      disabled={addingBrand}
+                      style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                    >
+                      {addingBrand ? (
+                        <>
+                          <div className="spinner-border spinner-border-sm me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-check-lg me-2"></i>
+                          {editingBrand ? "Update Brand" : "Create Buy Brand"}
+                        </>
+                      )}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-secondary ms-2"
+                      className="btn btn-outline-secondary ms-2"
                     onClick={() => {
                       editingBrand ? setEditingBrand(null) : setShowBrandForm(false)
                     }}
                     disabled={addingBrand}
+                      style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                   >
                     Cancel
                   </button>
                 </div>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Add Inventory Button */}
       {/* Error and Success Messages */}
-      {error && <div className="alert alert-danger py-2">{error}</div>}
-      {success && <div className="alert alert-success py-2">{success}</div>}
+      {(error || success) && (
+        <div style={{ padding: '0 15px', marginBottom: '1rem' }}>
+          {error && (
+            <div className="alert alert-danger py-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <i className="bi bi-exclamation-triangle me-2"></i>
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="alert alert-success py-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <i className="bi bi-check-circle me-2"></i>
+              {success}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Loading State */}
       {loading ? (
-        <div className="text-center py-5">
+        <div className="text-start py-5" style={{ padding: '0 15px' }}>
           <div className="spinner-border text-primary" role="status"></div>
-          <p className="mt-2">Loading buy inventory...</p>
+          <span className="ms-2">Loading buy inventory...</span>
         </div>
       ) : (
-        <div className="brands-container">
+        <div style={{ padding: '0 15px' }}>
           {groupedInventory.length === 0 ? (
             <div className="text-center py-5">
               <div className="mb-3">
-                <i className="fas fa-shopping-cart fa-3x text-muted"></i>
+                <i className="bi bi-cart fs-1 text-muted"></i>
               </div>
-              <h5 className="text-muted">No buy brands found</h5>
-              <p className="text-muted">Create your first buy brand to get started with inventory management</p>
+              <h5 className="text-muted fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>No buy brands found</h5>
+              <p className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Create your first buy brand to get started with inventory management
+              </p>
             </div>
           ) : (
-            groupedInventory.map((brand) => {
+            <div className="brands-container">
+              {groupedInventory.map((brand) => {
               const categoryName = categories.find((cat) => cat.id === brand.category_id)?.name || "Unknown"
 
               return (
-                <div key={brand.id} className="card mb-3">
-                  <div className="card-header">
+                  <div key={brand.id} className="card border shadow-sm mb-3" style={{ backgroundColor: '#ffffff', borderRadius: '0' }}>
+                    <div className="card-header bg-light border-bottom">
                     <div className="d-flex justify-content-between align-items-center">
                       <div className="d-flex align-items-center">
                         {brand.image_url && (
                           <img
-                            src={brand.image_url || "/placeholder.svg"}
+                              src={brand.image_url}
                             alt={brand.name}
-                            style={{ width: 40, height: 40, marginRight: 12, borderRadius: 4 }}
+                              style={{ width: 40, height: 40, marginRight: 12, borderRadius: '0' }}
                           />
                         )}
                         <div>
-                          <h6 className="mb-0">{brand.name}</h6>
-                          <small className="text-muted">
-                            {categoryName} • {Object.keys(brand.variantGroups).length} variants • {brand.availableCodes}{" "}
-                            available • {brand.totalCodes} total codes
+                            <h6 className="mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{brand.name}</h6>
+                            <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {categoryName} • {Object.keys(brand.variantGroups).length} variants • {brand.availableCodes} available • {brand.totalCodes} total codes
                           </small>
                         </div>
                       </div>
@@ -1027,16 +769,25 @@ const GiftcardInventory = () => {
                             setEditingBrand(brand)
                             setShowBrandForm(false)
                           }}
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                         >
+                            <i className="bi bi-pencil me-1"></i>
                           Edit Brand
                         </button>
                         <button
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => toggleBrandExpansion(brand.id)}
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                         >
+                            <i className={`bi ${expandedBrands[brand.id] ? 'bi-chevron-up' : 'bi-chevron-down'} me-1`}></i>
                           {expandedBrands[brand.id] ? "Hide Details" : "Manage Variants"}
                         </button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteBrand(brand.id)}>
+                          <button 
+                            className="btn btn-sm btn-outline-danger" 
+                            onClick={() => handleDeleteBrand(brand.id)}
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                          >
+                            <i className="bi bi-trash me-1"></i>
                           Delete Brand
                         </button>
                       </div>
@@ -1045,34 +796,37 @@ const GiftcardInventory = () => {
 
                   {/* Brand Details and Variant Management */}
                   {expandedBrands[brand.id] && (
-                    <div className="card-body">
+                      <div className="card-body p-4">
                       {/* Add Variant Form */}
-                      <div className="card mb-4">
-                        <div className="card-header">
-                          <h6 className="mb-0">
+                        <div className="card border mb-4" style={{ backgroundColor: '#f8f9fa', borderRadius: '0' }}>
+                          <div className="card-header bg-white border-bottom">
+                            <h6 className="mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <i className="bi bi-plus-circle me-2"></i>
                             {variantForms[brand.id]?.isExistingVariant 
                               ? `Add More Codes to Existing Variant: ${variantForms[brand.id]?.variant_name}`
                               : `Add New Variant Codes to ${brand.name}`
                             }
                           </h6>
                           {variantForms[brand.id]?.isExistingVariant && (
-                            <small className="text-muted">
+                              <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Variant details are locked. You can only add new codes to this existing variant.
                             </small>
                           )}
                           {variantForms[brand.id]?.variant_name && (
                             <div className="mt-2">
-                              <span className="badge bg-info">
+                                <span className="badge bg-info" style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
                                 Form Ready: {variantForms[brand.id]?.isExistingVariant ? "Adding to Existing" : "Creating New"}
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className="card-body">
+                          <div className="card-body p-3">
                           <form onSubmit={(e) => handleAddVariant(e, brand.id)}>
                             <div className="row g-3 mb-3">
-                              <div className="col-md-4">
-                                <label className="form-label">Variant Name *</label>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    Variant Name <span className="text-danger">*</span>
+                                  </label>
                                 <input
                                   type="text"
                                   className="form-control"
@@ -1081,11 +835,17 @@ const GiftcardInventory = () => {
                                   required
                                   placeholder="e.g., Standard, Premium"
                                   readOnly={variantForms[brand.id]?.isExistingVariant}
-                                  style={variantForms[brand.id]?.isExistingVariant ? { backgroundColor: '#f8f9fa' } : {}}
+                                    style={{ 
+                                      fontFamily: 'Inter, sans-serif', 
+                                      borderRadius: '0',
+                                      backgroundColor: variantForms[brand.id]?.isExistingVariant ? '#f8f9fa' : '#ffffff'
+                                    }}
                                 />
                               </div>
-                              <div className="col-md-4">
-                                <label className="form-label">Value (USD) *</label>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    Value (USD) <span className="text-danger">*</span>
+                                  </label>
                                 <input
                                   type="number"
                                   className="form-control"
@@ -1096,11 +856,17 @@ const GiftcardInventory = () => {
                                   step="0.01"
                                   placeholder="25.00"
                                   readOnly={variantForms[brand.id]?.isExistingVariant}
-                                  style={variantForms[brand.id]?.isExistingVariant ? { backgroundColor: '#f8f9fa' } : {}}
+                                    style={{ 
+                                      fontFamily: 'Inter, sans-serif', 
+                                      borderRadius: '0',
+                                      backgroundColor: variantForms[brand.id]?.isExistingVariant ? '#f8f9fa' : '#ffffff'
+                                    }}
                                 />
                               </div>
-                              <div className="col-md-4">
-                                <label className="form-label">Rate (₦ per $1) *</label>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    Rate (₦ per $1) <span className="text-danger">*</span>
+                                  </label>
                                 <input
                                   type="number"
                                   className="form-control"
@@ -1111,11 +877,17 @@ const GiftcardInventory = () => {
                                   step="0.01"
                                   placeholder="0.00"
                                   readOnly={variantForms[brand.id]?.isExistingVariant}
-                                  style={variantForms[brand.id]?.isExistingVariant ? { backgroundColor: '#f8f9fa' } : {}}
+                                    style={{ 
+                                      fontFamily: 'Inter, sans-serif', 
+                                      borderRadius: '0',
+                                      backgroundColor: variantForms[brand.id]?.isExistingVariant ? '#f8f9fa' : '#ffffff'
+                                    }}
                                 />
                               </div>
-                              <div className="col-md-4">
-                                <label className="form-label">Quantity *</label>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                    Quantity <span className="text-danger">*</span>
+                                  </label>
                                 <input
                                   type="number"
                                   className="form-control"
@@ -1124,13 +896,16 @@ const GiftcardInventory = () => {
                                   required
                                   min="1"
                                   max="20"
+                                    style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                 />
                               </div>
                             </div>
 
                             {/* Dynamic Code Input Fields */}
                             <div className="mb-3">
-                              <label className="form-label">Gift Card Codes *</label>
+                                <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Gift Card Codes <span className="text-danger">*</span>
+                                </label>
                               <div className="row g-2">
                                 {(variantForms[brand.id]?.codes || [""]).map((code, index) => (
                                   <div key={index} className="col-md-3">
@@ -1141,21 +916,39 @@ const GiftcardInventory = () => {
                                       value={code}
                                       onChange={(e) => handleVariantCodeChange(brand.id, index, e.target.value)}
                                       required
+                                        style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                     />
                                   </div>
                                 ))}
                               </div>
-                              <small className="text-muted">
+                                <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 Enter {variantForms[brand.id]?.quantity || 1} unique gift card codes
                               </small>
                             </div>
 
-                            <button className="btn btn-success" type="submit" disabled={addingVariant[brand.id]}>
-                              {addingVariant[brand.id] ? "Adding..." : variantForms[brand.id]?.isExistingVariant ? "Add More Codes" : "Add Variant Codes"}
+                              <button 
+                                className="btn btn-success" 
+                                type="submit" 
+                                disabled={addingVariant[brand.id]}
+                                style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                              >
+                                {addingVariant[brand.id] ? (
+                                  <>
+                                    <div className="spinner-border spinner-border-sm me-2" role="status">
+                                      <span className="visually-hidden">Loading...</span>
+                                    </div>
+                                    Adding...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-check-lg me-2"></i>
+                                    {variantForms[brand.id]?.isExistingVariant ? "Add More Codes" : "Add Variant Codes"}
+                                  </>
+                                )}
                             </button>
                             <button
                               type="button"
-                              className="btn btn-secondary ms-2"
+                                className="btn btn-outline-secondary ms-2"
                               onClick={() => {
                                 setVariantForms((prev) => ({
                                   ...prev,
@@ -1173,6 +966,7 @@ const GiftcardInventory = () => {
                                 }))
                               }}
                               disabled={addingVariant[brand.id]}
+                                style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                             >
                               Clear Form
                             </button>
@@ -1182,15 +976,18 @@ const GiftcardInventory = () => {
 
                       {/* Existing Variants */}
                       {Object.keys(brand.variantGroups).length > 0 && (
-                        <div className="card">
-                          <div className="card-header">
-                            <h6 className="mb-0">Existing Variants</h6>
+                          <div className="card border" style={{ backgroundColor: '#ffffff', borderRadius: '0' }}>
+                            <div className="card-header bg-light border-bottom">
+                              <h6 className="mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                <i className="bi bi-list-ul me-2"></i>
+                                Existing Variants ({Object.keys(brand.variantGroups).length})
+                              </h6>
                           </div>
-                          <div className="card-body">
+                            <div className="card-body p-0">
                             {Object.entries(brand.variantGroups).map(([variantKey, variants]) => (
                               <div key={variantKey} className="mb-4">
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                  <h6 className="text-primary mb-0">
+                                  <div className="d-flex justify-content-between align-items-center mb-3 p-3 border-bottom">
+                                    <h6 className="text-primary mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
                                     {variants[0]?.variant_name} (Value: ${variants[0]?.value} | Rate: ₦{variants[0]?.rate})
                                   </h6>
                                   <button
@@ -1204,27 +1001,28 @@ const GiftcardInventory = () => {
                                         variants[0]?.rate
                                       )
                                     }}
-                                    style={{ cursor: 'pointer' }}
+                                      style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                   >
+                                      <i className="bi bi-plus-lg me-1"></i>
                                     Add More Codes
                                   </button>
                                 </div>
-                                <div className="table-responsive">
-                                  <table className="table table-sm table-bordered">
-                                    <thead>
+                                  <div className="table-container">
+                                    <table className="table table-hover mb-0" style={{ fontFamily: 'Inter, sans-serif', width: '100%', tableLayout: 'fixed' }}>
+                                      <thead className="table-light">
                                       <tr>
-                                        <th>Code</th>
-                                        <th>Value (USD)</th>
-                                        <th>Rate (₦ per $1)</th>
-                                        <th>Status</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
+                                          <th className="px-3 py-3 fw-semibold text-start" style={{ width: '20%', fontFamily: 'Inter, sans-serif' }}>Code</th>
+                                          <th className="px-3 py-3 fw-semibold text-start" style={{ width: '15%', fontFamily: 'Inter, sans-serif' }}>Value (USD)</th>
+                                          <th className="px-3 py-3 fw-semibold text-start" style={{ width: '15%', fontFamily: 'Inter, sans-serif' }}>Rate (₦ per $1)</th>
+                                          <th className="px-3 py-3 fw-semibold text-start" style={{ width: '15%', fontFamily: 'Inter, sans-serif' }}>Status</th>
+                                          <th className="px-3 py-3 fw-semibold text-start" style={{ width: '15%', fontFamily: 'Inter, sans-serif' }}>Created</th>
+                                          <th className="px-3 py-3 fw-semibold text-start" style={{ width: '20%', fontFamily: 'Inter, sans-serif' }}>Actions</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {variants.map((variant) => (
-                                        <tr key={variant.id}>
-                                          <td>
+                                          <tr key={variant.id} className="border-bottom">
+                                            <td className="px-3 py-3 text-start">
                                             {editingItem[variant.id] ? (
                                               <input
                                                 type="text"
@@ -1234,12 +1032,15 @@ const GiftcardInventory = () => {
                                                   handleEditItemChange(variant.id, "code", e.target.value)
                                                 }
                                                 required
+                                                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                               />
                                             ) : (
-                                              <code>{variant.code}</code>
+                                                <code className="text-truncate" style={{ fontFamily: 'Inter, sans-serif' }} title={variant.code}>
+                                                  {variant.code}
+                                                </code>
                                             )}
                                           </td>
-                                          <td>
+                                            <td className="px-3 py-3 text-start">
                                             {editingItem[variant.id] ? (
                                               <input
                                                 type="number"
@@ -1251,12 +1052,15 @@ const GiftcardInventory = () => {
                                                 required
                                                 min="0"
                                                 step="0.01"
+                                                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                               />
                                             ) : (
-                                              `$${variant.value}`
+                                                <div className="fw-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                                  ${variant.value}
+                                                </div>
                                             )}
                                           </td>
-                                          <td>
+                                            <td className="px-3 py-3 text-start">
                                             {editingItem[variant.id] ? (
                                               <input
                                                 type="number"
@@ -1268,33 +1072,41 @@ const GiftcardInventory = () => {
                                                 required
                                                 min="0"
                                                 step="0.01"
+                                                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                               />
                                             ) : (
-                                              `₦${variant.rate}`
+                                                <div className="fw-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                                  ₦{variant.rate}
+                                                </div>
                                             )}
                                           </td>
-                                          <td>
-                                            <span className={`badge ${variant.sold ? "bg-danger" : "bg-success"}`}>
+                                            <td className="px-3 py-3 text-start">
+                                              <span className={`badge ${variant.sold ? "bg-danger" : "bg-success"}`} 
+                                                    style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
                                               {variant.sold ? "Sold" : "Available"}
                                             </span>
                                           </td>
-                                          <td>
+                                            <td className="px-3 py-3 text-start">
+                                              <div className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
                                             {variant.created_at
                                               ? new Date(variant.created_at).toLocaleDateString()
                                               : "-"}
+                                              </div>
                                           </td>
-                                          <td>
+                                            <td className="px-3 py-3 text-start">
                                             {editingItem[variant.id] ? (
                                               <div className="d-flex gap-1">
                                                 <button
                                                   className="btn btn-sm btn-success"
                                                   onClick={(e) => handleEditItem(e, variant.id)}
                                                   disabled={editingItemLoading[variant.id]}
+                                                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                                 >
+                                                    <i className="bi bi-check-lg me-1"></i>
                                                   Save
                                                 </button>
                                                 <button
-                                                  className="btn btn-sm btn-secondary"
+                                                    className="btn btn-sm btn-outline-secondary"
                                                   onClick={() =>
                                                     setEditingItem((prev) => {
                                                       const newState = { ...prev }
@@ -1302,6 +1114,7 @@ const GiftcardInventory = () => {
                                                       return newState
                                                     })
                                                   }
+                                                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                                 >
                                                   Cancel
                                                 </button>
@@ -1312,7 +1125,9 @@ const GiftcardInventory = () => {
                                                   className="btn btn-sm btn-outline-secondary"
                                                   onClick={() => startEditItem(variant)}
                                                   disabled={variant.sold}
+                                                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                                 >
+                                                    <i className="bi bi-pencil me-1"></i>
                                                   Edit
                                                 </button>
                                                 <button
@@ -1320,7 +1135,9 @@ const GiftcardInventory = () => {
                                                   onClick={() => handleDeleteInventoryItem(variant.id)}
                                                   disabled={variant.sold}
                                                   title={variant.sold ? "Cannot delete sold items" : "Delete this code"}
+                                                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                                                 >
+                                                    <i className="bi bi-trash me-1"></i>
                                                   Delete
                                                 </button>
                                               </div>
@@ -1340,7 +1157,8 @@ const GiftcardInventory = () => {
                   )}
                 </div>
               )
-            })
+              })}
+            </div>
           )}
         </div>
       )}

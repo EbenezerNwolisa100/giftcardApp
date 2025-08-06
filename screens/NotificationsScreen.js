@@ -333,7 +333,7 @@ export default function NotificationsScreen({ navigation }) {
   // Notifications Skeleton Component
   const NotificationsSkeleton = () => (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
+        <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
 
       {/* Fixed Header Skeleton */}
       <View

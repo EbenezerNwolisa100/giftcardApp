@@ -5,8 +5,8 @@ import { getTheme } from './theme'
 const ThemeContext = createContext()
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(true) // Default to dark
-  const [theme, setTheme] = useState(getTheme(true))
+  const [isDark, setIsDark] = useState(false) // Default to light
+  const [theme, setTheme] = useState(getTheme(false))
 
   useEffect(() => {
     loadThemePreference()

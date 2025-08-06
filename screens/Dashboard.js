@@ -66,7 +66,7 @@ export default function Dashboard() {
             }
           }
         } else {
-          setProfile(profileData)
+        setProfile(profileData)
         }
 
         // Fetch gift card transactions (sell and buy)
@@ -74,7 +74,7 @@ export default function Dashboard() {
           .from("giftcard_transactions")
           .select(
             `
-            id, type, status, created_at, amount, total, rate, payment_method, proof_of_payment_url, paystack_reference,
+            id, type, status, created_at, amount, total, rate, payment_method, proof_of_payment_url, flutterwave_reference,
             brand_id, brand_name, variant_id, variant_name, card_code, image_url, rejection_reason, quantity, buy_brand_id, card_codes,
             sell_brand:brand_id (name, image_url),
             sell_variant:variant_id (name),
@@ -106,50 +106,50 @@ export default function Dashboard() {
 
         // Combine all transactions and normalize their structure
         const allCombinedTxs = []
-          // Gift Card Transactions
+        // Gift Card Transactions
           ; (giftcardTxs || []).forEach((tx) => {
-            const isSell = tx.type === "sell"
-            const isBuy = tx.type === "buy"
-            const brandName = isBuy ? tx.buy_brand?.name || tx.brand_name : tx.sell_brand?.name || tx.brand_name
-            const brandImage = isBuy ? tx.buy_brand?.image_url || tx.image_url : tx.sell_brand?.image_url || tx.image_url
-            const variantName = isBuy ? tx.variant_name : tx.sell_variant?.name || tx.variant_name
-            const amountDisplay = tx.total?.toLocaleString() || tx.amount?.toLocaleString() || "0.00"
-            allCombinedTxs.push({
-              ...tx,
-              txType: tx.type, // Add txType for TransactionDetails compatibility
-              originalType: tx.type,
-              displayType: isSell ? "Sell Gift Card" : "Buy Gift Card",
-              displayAmount: amountDisplay,
-              displayBrand: brandName || "Gift Card",
-              displayImage: brandImage,
-              variantName: variantName,
-              displayStatus: tx.status,
-              displayDate: tx.created_at,
-              displayId: `gc-${tx.id}`,
-              displayCode: isBuy && Array.isArray(tx.card_codes) && tx.card_codes.length > 0 ? tx.card_codes.join(", ") : tx.card_code,
-              paymentMethod: tx.payment_method,
-              proofUrl: tx.proof_of_payment_url,
-              paystackRef: tx.paystack_reference,
-              icon: isSell ? "credit-card" : "shopping-cart", // MaterialIcons
-              iconColor: theme.secondary, // Use theme color
-            })
+          const isSell = tx.type === "sell"
+          const isBuy = tx.type === "buy"
+          const brandName = isBuy ? tx.buy_brand?.name || tx.brand_name : tx.sell_brand?.name || tx.brand_name
+          const brandImage = isBuy ? tx.buy_brand?.image_url || tx.image_url : tx.sell_brand?.image_url || tx.image_url
+          const variantName = isBuy ? tx.variant_name : tx.sell_variant?.name || tx.variant_name
+          const amountDisplay = tx.total?.toLocaleString() || tx.amount?.toLocaleString() || "0.00"
+          allCombinedTxs.push({
+            ...tx,
+            txType: tx.type, // Add txType for TransactionDetails compatibility
+            originalType: tx.type,
+            displayType: isSell ? "Sell Gift Card" : "Buy Gift Card",
+            displayAmount: amountDisplay,
+            displayBrand: brandName || "Gift Card",
+            displayImage: brandImage,
+            variantName: variantName,
+            displayStatus: tx.status,
+            displayDate: tx.created_at,
+            displayId: `gc-${tx.id}`,
+            displayCode: isBuy && Array.isArray(tx.card_codes) && tx.card_codes.length > 0 ? tx.card_codes.join(", ") : tx.card_code,
+            paymentMethod: tx.payment_method,
+            proofUrl: tx.proof_of_payment_url,
+            flutterwaveRef: tx.flutterwave_reference,
+            icon: isSell ? "credit-card" : "shopping-cart", // MaterialIcons
+            iconColor: theme.secondary, // Use theme color
           })
-          // Withdrawals
+        })
+        // Withdrawals
           ; (withdrawals || []).forEach((tx) => {
-            allCombinedTxs.push({
-              ...tx,
-              txType: "withdrawal", // Add txType for TransactionDetails compatibility
-              originalType: "withdrawal",
-              displayType: "Withdrawal",
-              displayAmount: tx.amount?.toLocaleString() || "0.00",
-              displayBrand: "Wallet Withdrawal",
-              displayStatus: tx.status,
-              displayDate: tx.created_at,
-              displayId: `wd-${tx.id}`,
-              icon: "arrow-up", // Ionicons
-              iconColor: theme.warning, // Use theme color
-            })
+          allCombinedTxs.push({
+            ...tx,
+            txType: "withdrawal", // Add txType for TransactionDetails compatibility
+            originalType: "withdrawal",
+            displayType: "Withdrawal",
+            displayAmount: tx.amount?.toLocaleString() || "0.00",
+            displayBrand: "Wallet Withdrawal",
+            displayStatus: tx.status,
+            displayDate: tx.created_at,
+            displayId: `wd-${tx.id}`,
+            icon: "arrow-up", // Ionicons
+            iconColor: theme.warning, // Use theme color
           })
+        })
 
         // Sort all transactions by date and get the latest 5
         const sortedAndLimitedTxs = allCombinedTxs
@@ -584,7 +584,7 @@ export default function Dashboard() {
   const DashboardSkeleton = () => (
     <View style={styles.container}>
       <StatusBar barStyle={isDarkTheme ? "light-content" : "dark-content"} backgroundColor={theme.primary} />
-
+      
       {/* Fixed Header Skeleton */}
       <View style={styles.fixedHeader}>
         <View style={styles.headerContent}>
@@ -752,9 +752,9 @@ export default function Dashboard() {
       <View style={styles.transactionsHeader}>
         <Text style={styles.sectionTitles}>Recent Transactions</Text>
         <View>
-          <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
+          <Text style={styles.seeAllText}>See All</Text>
+        </TouchableOpacity>
         </View>
       </View>
     </>
@@ -767,14 +767,14 @@ export default function Dashboard() {
       {/* Fixed Header */}
       <View style={styles.fixedHeader}>
         <View style={styles.headerContent}>
-                  <View>
-          <Text style={styles.greeting}>
-            Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
-          </Text>
+          <View>
+            <Text style={styles.greeting}>
+              Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}
+            </Text>
           <Text style={styles.username}>
             {loading ? "Loading..." : profile?.full_name || "User"}
           </Text>
-        </View>
+          </View>
           <TouchableOpacity
             onPress={() => navigation.navigate("NotificationsScreen")}
             style={styles.notificationButton}
@@ -793,7 +793,7 @@ export default function Dashboard() {
         data={transactions}
         keyExtractor={(item) => item.displayId}
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <TouchableOpacity 
             onPress={() => navigation.navigate("TransactionDetails", { transaction: item })}
             activeOpacity={0.8}
           >
@@ -927,9 +927,9 @@ export default function Dashboard() {
             <View style={styles.transactionsHeader}>
               <Text style={styles.sectionTitles}>Recent Transactions</Text>
               <View>
-                <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
-                  <Text style={styles.seeAllText}>See All</Text>
-                </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate("Transactions")}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
               </View>
             </View>
           </>

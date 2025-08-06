@@ -49,8 +49,8 @@ const Transactions = () => {
           .from("giftcard_transactions")
           .select(`
             id, user_id, amount, rate, total, type, status, created_at, rejection_reason,
-            payment_method, proof_of_payment_url, paystack_reference, card_code, image_url,
-            quantity, card_codes,
+            payment_method, proof_of_payment_url, flutterwave_reference, card_code, image_url,
+            quantity, card_codes, variant_name,
             sell_brand:sell_brand_id (
               id, name, image_url
             ),
@@ -261,9 +261,10 @@ const Transactions = () => {
   // Helper function to get variant name
   const getVariantName = (tx) => {
     if (tx.type === "sell") {
-      return tx.sell_variant?.name || "-"
+      // For sell: use sell_variant.name with fallback to variant_name (matching Dashboard.jsx)
+      return tx.sell_variant?.name || tx.variant_name || "-"
     } else if (tx.type === "buy") {
-      // For buy, variant_name is directly on giftcards_buy (buy_item)
+      // For buy: use variant_name directly (matching Dashboard.jsx)
       return tx.variant_name || "-"
     }
     return "-"
@@ -292,11 +293,30 @@ const Transactions = () => {
   }
 
   return (
-    <div className="container-fluid py-4">
-      <h2 className="mb-4">Gift Card Transactions</h2>
-      <div className="row mb-3 g-2 align-items-end">
+    <div style={{ fontFamily: 'Inter, sans-serif', width: '100%', overflowX: 'hidden', maxWidth: '100vw' }}>
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4" style={{ padding: '0 15px' }}>
+        <div>
+          <h2 className="mb-1 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>Gift Card Transactions</h2>
+          <p className="text-muted mb-0" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Manage and review all gift card transactions
+          </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ padding: '0 15px', marginBottom: '2rem' }}>
+        <div className="card border shadow-sm" style={{ backgroundColor: '#ffffff', borderRadius: '0' }}>
+          <div className="card-header bg-light border-bottom">
+            <h5 className="mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <i className="bi bi-funnel me-2"></i>
+              Filters & Search
+            </h5>
+          </div>
+          <div className="card-body p-4">
+            <div className="row g-3">
         <div className="col-md-2">
-          <label className="form-label">Status</label>
+                <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Status</label>
           <select
             className="form-select"
             value={statusFilter}
@@ -304,15 +324,16 @@ const Transactions = () => {
               setStatusFilter(e.target.value)
               setPage(1)
             }}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
           >
-            <option value="all">All</option>
+                  <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="completed">Completed</option>
             <option value="rejected">Rejected</option>
           </select>
         </div>
         <div className="col-md-2">
-          <label className="form-label">Type</label>
+                <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Type</label>
           <select
             className="form-select"
             value={typeFilter}
@@ -320,14 +341,15 @@ const Transactions = () => {
               setTypeFilter(e.target.value)
               setPage(1)
             }}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
           >
-            <option value="all">All</option>
+                  <option value="all">All Types</option>
             <option value="sell">Sell to Platform</option>
             <option value="buy">Buy from Platform</option>
           </select>
         </div>
         <div className="col-md-2">
-          <label className="form-label">Payment Method</label>
+                <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Payment Method</label>
           <select
             className="form-select"
             value={paymentMethodFilter}
@@ -335,97 +357,168 @@ const Transactions = () => {
               setPaymentMethodFilter(e.target.value)
               setPage(1)
             }}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
           >
-            <option value="all">All</option>
-            <option value="paystack">Paystack</option>
+                  <option value="all">All Methods</option>
+            <option value="flutterwave">Flutterwave</option>
             <option value="manual_transfer">Manual Transfer</option>
             <option value="wallet">Wallet</option>
           </select>
         </div>
         <div className="col-md-4">
-          <label className="form-label">Search</label>
+                <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Search</label>
           <input
             type="text"
             className="form-control"
-            placeholder="User, brand, variant, or code"
+                  placeholder="Search by user, brand, variant, or code"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-          />
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                />
+              </div>
+              <div className="col-md-2 d-flex align-items-end">
+                <button 
+                  className="btn btn-outline-secondary w-100" 
+                  onClick={() => {
+                    setStatusFilter('all')
+                    setTypeFilter('all')
+                    setPaymentMethodFilter('all')
+                    setSearch('')
+                    setPage(1)
+                  }}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                >
+                  <i className="bi bi-arrow-clockwise me-2"></i>
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Transactions Table */}
       {loading ? (
-        <div className="text-center py-5">
+        <div className="text-start py-5" style={{ padding: '0 15px' }}>
           <div className="spinner-border text-primary" role="status"></div>
+          <span className="ms-2">Loading transactions...</span>
         </div>
       ) : error ? (
-        <div className="alert alert-danger my-4">{error}</div>
+        <div style={{ padding: '0 15px' }}>
+          <div className="alert alert-danger py-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <i className="bi bi-exclamation-triangle me-2"></i>
+            {error}
+          </div>
+        </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-hover table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>User</th>
-                <th>Email</th>
-                <th>Type</th>
-                <th>Brand</th>
-                <th>Variant</th>
-                <th>Card Code(s)</th>
-                <th>Amount (USD)</th>
-                <th>Rate (₦/$)</th>
-                <th>Total (₦)</th>
-                <th>Qty</th>
-                <th>Status</th>
-                <th>Payment Method</th>
-                <th></th>
+        <div style={{ padding: '0 15px' }}>
+          <div className="card border shadow-sm" style={{ backgroundColor: '#ffffff', borderRadius: '0' }}>
+            <div className="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+              <h5 className="mb-0 fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <i className="bi bi-table me-2"></i>
+                Transactions ({filtered.length})
+              </h5>
+              <div className="text-muted small" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Page {page} of {totalPages}
+              </div>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-container">
+                <table className="table table-hover mb-0" style={{ fontFamily: 'Inter, sans-serif', width: '100%', tableLayout: 'fixed' }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '12%', fontFamily: 'Inter, sans-serif' }}>Date</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '10%', fontFamily: 'Inter, sans-serif' }}>User</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '12%', fontFamily: 'Inter, sans-serif' }}>Type</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '10%', fontFamily: 'Inter, sans-serif' }}>Brand</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '10%', fontFamily: 'Inter, sans-serif' }}>Variant</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '8%', fontFamily: 'Inter, sans-serif' }}>Amount</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '8%', fontFamily: 'Inter, sans-serif' }}>Rate</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '10%', fontFamily: 'Inter, sans-serif' }}>Total</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '6%', fontFamily: 'Inter, sans-serif' }}>Qty</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '8%', fontFamily: 'Inter, sans-serif' }}>Status</th>
+                      <th className="px-3 py-3 fw-semibold text-start" style={{ width: '6%', fontFamily: 'Inter, sans-serif' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="14" className="text-center">
-                    No transactions found
+                        <td colSpan="11" className="text-start py-5 text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <div className="text-center">
+                            <i className="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
+                            <h6 className="fw-bold">No transactions found</h6>
+                            <p className="mb-0">Try adjusting your filters or search terms</p>
+                          </div>
                   </td>
                 </tr>
               ) : (
                 filtered.map((tx) => (
-                  <tr key={tx.id}>
-                    <td>{formatDate(tx.created_at)}</td>
-                    <td>{tx.user?.full_name || "-"}</td>
-                    <td>{tx.user?.email || "-"}</td>
-                    <td>
-                      <span className={`badge ${tx.type === "sell" ? "bg-warning" : "bg-info"}`}>
-                        {tx.type === "sell" ? "Sell to Platform" : "Buy from Platform"}
+                        <tr key={tx.id} className="border-bottom">
+                          <td className="px-3 py-3 text-start">
+                            <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {formatDate(tx.created_at)}
+                            </small>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <div>
+                              <div className="fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                {tx.user?.full_name || "-"}
+                              </div>
+                              <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                {tx.user?.email || "-"}
+                              </small>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <span className={`badge ${tx.type === "sell" ? "bg-warning" : "bg-info"}`} style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
+                              {tx.type === "sell" ? "Sell" : "Buy"}
                       </span>
                     </td>
-                    <td>{getBrandName(tx)}</td>
-                    <td>{getVariantName(tx)}</td>
-                    <td>
-                      <code>{getCardCode(tx)}</code>
+                          <td className="px-3 py-3 text-start">
+                            <div className="fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {getBrandName(tx)}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {getVariantName(tx)}
+                            </small>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <div className="fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              ${Number(tx.amount || 0).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <small className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              ₦{tx.rate}
+                            </small>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <div className="fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              ₦{Number(tx.total).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-start">
+                            <span className="badge bg-secondary" style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
+                              {tx.quantity || 1}
+                            </span>
                     </td>
-                    <td>${Number(tx.amount || 0).toLocaleString()}</td>
-                    <td>₦{tx.rate}</td>
-                    <td>₦{Number(tx.total).toLocaleString()}</td>
-                    <td>{tx.quantity || 1}</td>
-                    <td>
+                          <td className="px-3 py-3 text-start">
                       <span
                         className={`badge bg-${tx.status === "completed" ? "success" : tx.status === "pending" ? "warning" : "danger"}`}
+                              style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                       >
                         {tx.status}
                       </span>
                     </td>
-                    <td>
-                      {tx.payment_method === "paystack"
-                        ? "Paystack"
-                        : tx.payment_method === "manual_transfer"
-                          ? "Manual Transfer"
-                          : tx.payment_method === "wallet"
-                            ? "Wallet"
-                            : "-"}
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary" onClick={() => openTx(tx)}>
+                          <td className="px-3 py-3 text-start">
+                            <button 
+                              className="btn btn-sm btn-outline-primary" 
+                              onClick={() => openTx(tx)}
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                            >
+                              <i className="bi bi-eye me-1"></i>
                         View
                       </button>
                     </td>
@@ -434,161 +527,257 @@ const Transactions = () => {
               )}
             </tbody>
           </table>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Pagination */}
-      <div className="d-flex justify-content-center align-items-center mt-3 gap-2">
+      {!loading && !error && filtered.length > 0 && (
+        <div style={{ padding: '0 15px', marginTop: '1rem' }}>
+          <div className="d-flex justify-content-center align-items-center gap-3">
         <button
-          className="btn btn-sm btn-outline-secondary"
+              className="btn btn-outline-secondary"
           disabled={page === 1}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
+              style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
         >
-          Prev
+              <i className="bi bi-chevron-left me-1"></i>
+              Previous
         </button>
-        <span>
+            <div className="text-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
           Page {page} of {totalPages}
-        </span>
+            </div>
         <button
-          className="btn btn-sm btn-outline-secondary"
+              className="btn btn-outline-secondary"
           disabled={page === totalPages}
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
         >
           Next
+              <i className="bi bi-chevron-right ms-1"></i>
         </button>
       </div>
+        </div>
+      )}
 
       {/* Transaction Details Modal */}
       {selectedTx && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.3)" }}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.5)", zIndex: 1050 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Transaction Details</h5>
+            <div className="modal-content" style={{ borderRadius: '0', fontFamily: 'Inter, sans-serif' }}>
+              <div className="modal-header border-bottom">
+                <h5 className="modal-title fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <i className="bi bi-receipt me-2"></i>
+                  Transaction Details
+                </h5>
                 <button type="button" className="btn-close" onClick={closeTx}></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body p-4">
                 {modalLoading || !selectedTx ? (
                   <div className="text-center py-4">
                     <div className="spinner-border text-primary" role="status"></div>
+                    <p className="mt-2 text-muted">Loading transaction details...</p>
                   </div>
                 ) : modalError ? (
-                  <div className="alert alert-danger py-2">{modalError}</div>
+                  <div className="alert alert-danger py-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    {modalError}
+                  </div>
                 ) : (
                   <>
-                    <div className="row mb-3">
+                    <div className="row mb-4">
                       <div className="col-md-6">
-                        <strong>User:</strong> {selectedTx.user?.full_name} <br />
-                        <strong>Email:</strong> {selectedTx.user?.email} <br />
-                        <strong>Type:</strong> {selectedTx.type === "sell" ? "Sell to Platform" : "Buy from Platform"}{" "}
-                        <br />
-                        <strong>Status:</strong>{" "}
+                        <h6 className="fw-bold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <i className="bi bi-person me-2"></i>
+                          User Information
+                        </h6>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Name:</strong> {selectedTx.user?.full_name}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Email:</strong> {selectedTx.user?.email}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Date:</strong> {formatDate(selectedTx.created_at)}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Status:</strong>{" "}
                         <span
                           className={`badge bg-${selectedTx.status === "completed" ? "success" : selectedTx.status === "pending" ? "warning" : "danger"}`}
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                         >
                           {selectedTx.status}
-                        </span>{" "}
-                        <br />
-                        <strong>Date:</strong> {formatDate(selectedTx.created_at)} <br />
-                        <strong>Brand:</strong> {getBrandName(selectedTx)} <br />
-                        <strong>Variant:</strong> {getVariantName(selectedTx)} <br />
-                        {selectedTx.type === "buy" && selectedTx.buy_item?.value && (
-                          <>
-                            <strong>Card Value (USD):</strong> ${selectedTx.buy_item.value.toLocaleString()} <br />
-                          </>
-                        )}
-                        <strong>Amount (USD):</strong> ${Number(selectedTx.amount || 0).toLocaleString()} <br />
-                        <strong>Rate (₦/$):</strong> ₦{selectedTx.rate} <br />
-                        <strong>Quantity:</strong> {selectedTx.quantity || 1} <br />
-                        <strong>Total (₦):</strong> ₦{Number(selectedTx.total).toLocaleString()} <br />
-                        <strong>Card Code(s):</strong>{" "}
-                        <code>
-                          {selectedTx.type === "sell"
-                            ? selectedTx.card_code || "-"
-                            : (selectedTx.card_codes || []).join(", ") || "-"}
-                        </code>{" "}
-                        <br />
-                        <strong>Payment Method:</strong>{" "}
-                        {selectedTx.payment_method === "paystack"
-                          ? "Paystack"
+                          </span>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <h6 className="fw-bold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <i className="bi bi-credit-card me-2"></i>
+                          Transaction Details
+                        </h6>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Type:</strong>{" "}
+                          <span className={`badge ${selectedTx.type === "sell" ? "bg-warning" : "bg-info"}`} style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}>
+                            {selectedTx.type === "sell" ? "Sell to Platform" : "Buy from Platform"}
+                          </span>
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Brand:</strong> {getBrandName(selectedTx)}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Variant:</strong> {getVariantName(selectedTx)}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Payment Method:</strong>{" "}
+                        {selectedTx.payment_method === "flutterwave"
+  ? "Flutterwave"
                           : selectedTx.payment_method === "manual_transfer"
                             ? "Manual Transfer"
                             : selectedTx.payment_method === "wallet"
                               ? "Wallet"
-                              : "-"}{" "}
-                        <br />
-                        {selectedTx.rejection_reason && (
-                          <>
-                            <strong>Rejection Reason:</strong>{" "}
-                            <span className="text-danger">{selectedTx.rejection_reason}</span>
-                            <br />
-                          </>
+                                : "-"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="row mb-4">
+                      <div className="col-md-6">
+                        <h6 className="fw-bold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <i className="bi bi-calculator me-2"></i>
+                          Financial Details
+                        </h6>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Amount (USD):</strong> ${Number(selectedTx.amount || 0).toLocaleString()}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Rate (₦/$):</strong> ₦{selectedTx.rate}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Quantity:</strong> {selectedTx.quantity || 1}
+                        </div>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Total (₦):</strong> ₦{Number(selectedTx.total).toLocaleString()}
+                        </div>
+                        {selectedTx.type === "buy" && selectedTx.buy_item?.value && (
+                          <div className="mb-2">
+                            <strong style={{ fontFamily: 'Inter, sans-serif' }}>Card Value (USD):</strong> ${selectedTx.buy_item.value.toLocaleString()}
+                          </div>
                         )}
                       </div>
                       <div className="col-md-6">
-                        {selectedTx.payment_method === "paystack" && selectedTx.paystack_reference && (
-                          <>
-                            <strong>Paystack Ref:</strong> {selectedTx.paystack_reference}
+                        <h6 className="fw-bold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <i className="bi bi-code-slash me-2"></i>
+                          Card Information
+                        </h6>
+                        <div className="mb-2">
+                          <strong style={{ fontFamily: 'Inter, sans-serif' }}>Card Code(s):</strong>
                             <br />
-                          </>
-                        )}
-                        {selectedTx.payment_method === "manual_transfer" && selectedTx.proof_of_payment_url && (
-                          <div className="mt-2">
-                            <strong>Proof of Payment:</strong>
+                          <code style={{ fontFamily: 'Inter, sans-serif', backgroundColor: '#f8f9fa', padding: '0.25rem 0.5rem', borderRadius: '0' }}>
+                            {selectedTx.type === "sell"
+                              ? selectedTx.card_code || "-"
+                              : (selectedTx.card_codes || []).join(", ") || "-"}
+                          </code>
+                        </div>
+                        {selectedTx.rejection_reason && (
+                          <div className="mb-2">
+                            <strong style={{ fontFamily: 'Inter, sans-serif' }}>Rejection Reason:</strong>
                             <br />
-                            <a href={selectedTx.proof_of_payment_url} target="_blank" rel="noopener noreferrer">
-                              <img
-                                src={selectedTx.proof_of_payment_url || "/placeholder.svg"}
-                                alt="Proof"
-                                style={{ maxWidth: 180, maxHeight: 120, borderRadius: 8, border: "1px solid #ccc" }}
-                              />
-                            </a>
+                            <span className="text-danger" style={{ fontFamily: 'Inter, sans-serif' }}>{selectedTx.rejection_reason}</span>
                           </div>
                         )}
-                        {/* Gift Card Image */}
-                        {getImageUrl(selectedTx) && (
-                          <div className="mt-2">
-                            <strong>Gift Card Image:</strong>
-                            <br />
-                            <img
-                              src={getImageUrl(selectedTx) || "/placeholder.svg"}
-                              alt="Gift Card"
-                              style={{ maxWidth: 180, maxHeight: 120, borderRadius: 8, border: "1px solid #ccc" }}
-                            />
-                          </div>
-                        )}
+                        {selectedTx.payment_method === "flutterwave" && selectedTx.flutterwave_reference && (
+  <div className="mb-2">
+    <strong style={{ fontFamily: 'Inter, sans-serif' }}>Flutterwave Ref:</strong> {selectedTx.flutterwave_reference}
+  </div>
+)}
                       </div>
                     </div>
-                    {selectedTx.status === "pending" &&
-                      selectedTx.payment_method === "manual_transfer" &&
-                      !showRejectReason && (
-                        <div className="mb-3">
+
+                    {/* Images Section */}
+                    {(selectedTx.payment_method === "manual_transfer" && selectedTx.proof_of_payment_url) || getImageUrl(selectedTx) ? (
+                      <div className="row mb-4">
+                        <div className="col-12">
+                          <h6 className="fw-bold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <i className="bi bi-images me-2"></i>
+                            Images
+                          </h6>
+                          <div className="row g-3">
+                            {selectedTx.payment_method === "manual_transfer" && selectedTx.proof_of_payment_url && (
+                              <div className="col-md-6">
+                                <div className="card border" style={{ borderRadius: '0' }}>
+                                  <div className="card-header bg-light">
+                                    <strong style={{ fontFamily: 'Inter, sans-serif' }}>Proof of Payment</strong>
+                                  </div>
+                                  <div className="card-body p-2">
+                                    <a href={selectedTx.proof_of_payment_url} target="_blank" rel="noopener noreferrer">
+                                      <img
+                                        src={selectedTx.proof_of_payment_url}
+                                        alt="Proof of Payment"
+                                        style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '0' }}
+                                      />
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {getImageUrl(selectedTx) && (
+                              <div className="col-md-6">
+                                <div className="card border" style={{ borderRadius: '0' }}>
+                                  <div className="card-header bg-light">
+                                    <strong style={{ fontFamily: 'Inter, sans-serif' }}>Gift Card Image</strong>
+                                  </div>
+                                  <div className="card-body p-2">
+                                    <img
+                                      src={getImageUrl(selectedTx)}
+                                      alt="Gift Card"
+                                      style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '0' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Action Buttons */}
+                    {selectedTx.status === "pending" && selectedTx.payment_method === "manual_transfer" && !showRejectReason && (
+                      <div className="d-flex gap-2 pt-3 border-top">
                           <button
-                            className="btn btn-sm btn-success me-2"
+                          className="btn btn-success"
                             disabled={actionLoading}
                             onClick={() => setShowApproveConfirm(true)}
+                          style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                           >
-                            Approve
+                          <i className="bi bi-check-lg me-2"></i>
+                          Approve Transaction
                           </button>
                           <button
-                            className="btn btn-sm btn-danger"
+                          className="btn btn-danger"
                             disabled={actionLoading}
                             onClick={() => setShowRejectReason(true)}
+                          style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                           >
-                            Reject
+                          <i className="bi bi-x-lg me-2"></i>
+                          Reject Transaction
                           </button>
                         </div>
                       )}
+
+                    {/* Rejection Form */}
                     {selectedTx.status === "pending" && showRejectReason && (
                       <form
-                        className="mb-3"
+                        className="pt-3 border-top"
                         onSubmit={(e) => {
                           e.preventDefault()
                           setShowRejectConfirm(true)
                         }}
                       >
-                        <div className="mb-2">
-                          <label className="form-label">
+                        <div className="mb-3">
+                          <label className="form-label fw-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Rejection Reason <span className="text-danger">*</span>
                           </label>
                           <textarea
@@ -599,32 +788,48 @@ const Transactions = () => {
                             rows={3}
                             disabled={actionLoading}
                             placeholder="Please provide a clear reason for rejection..."
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                           ></textarea>
                         </div>
                         <div className="d-flex gap-2">
                           <button
                             type="submit"
-                            className="btn btn-danger btn-sm"
+                            className="btn btn-danger"
                             disabled={actionLoading || !rejectReason.trim()}
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                           >
+                            <i className="bi bi-x-lg me-2"></i>
                             Submit Rejection
                           </button>
                           <button
                             type="button"
-                            className="btn btn-secondary btn-sm"
+                            className="btn btn-outline-secondary"
                             onClick={() => {
                               setShowRejectReason(false)
                               setRejectReason("")
                             }}
                             disabled={actionLoading}
+                            style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                           >
                             Cancel
                           </button>
                         </div>
                       </form>
                     )}
-                    {actionError && <div className="alert alert-danger py-2">{actionError}</div>}
-                    {actionSuccess && <div className="alert alert-success py-2">{actionSuccess}</div>}
+
+                    {/* Action Messages */}
+                    {actionError && (
+                      <div className="alert alert-danger py-2 mt-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <i className="bi bi-exclamation-triangle me-2"></i>
+                        {actionError}
+                      </div>
+                    )}
+                    {actionSuccess && (
+                      <div className="alert alert-success py-2 mt-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <i className="bi bi-check-circle me-2"></i>
+                        {actionSuccess}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -635,19 +840,29 @@ const Transactions = () => {
 
       {/* Approve Confirmation Modal */}
       {showApproveConfirm && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.3)", zIndex: 1050 }}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.5)", zIndex: 1060 }}>
           <div className="modal-dialog modal-sm modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Approval</h5>
+            <div className="modal-content" style={{ borderRadius: '0', fontFamily: 'Inter, sans-serif' }}>
+              <div className="modal-header border-bottom">
+                <h5 className="modal-title fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <i className="bi bi-check-circle text-success me-2"></i>
+                  Confirm Approval
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setShowApproveConfirm(false)}></button>
               </div>
-              <div className="modal-body">
-                <p>Are you sure you want to approve this transaction?</p>
-                <p className="text-muted small">This will mark the transaction as completed and notify the user.</p>
+              <div className="modal-body p-4">
+                <p style={{ fontFamily: 'Inter, sans-serif' }}>Are you sure you want to approve this transaction?</p>
+                <p className="text-muted small" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  This will mark the transaction as completed and notify the user.
+                </p>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowApproveConfirm(false)}>
+              <div className="modal-footer border-top">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary" 
+                  onClick={() => setShowApproveConfirm(false)}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                >
                   Cancel
                 </button>
                 <button
@@ -657,7 +872,9 @@ const Transactions = () => {
                     setShowApproveConfirm(false)
                     handleAction("completed")
                   }}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                 >
+                  <i className="bi bi-check-lg me-2"></i>
                   Approve
                 </button>
               </div>
@@ -668,21 +885,29 @@ const Transactions = () => {
 
       {/* Reject Confirmation Modal */}
       {showRejectConfirm && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.3)", zIndex: 1050 }}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.5)", zIndex: 1060 }}>
           <div className="modal-dialog modal-sm modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Rejection</h5>
+            <div className="modal-content" style={{ borderRadius: '0', fontFamily: 'Inter, sans-serif' }}>
+              <div className="modal-header border-bottom">
+                <h5 className="modal-title fw-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <i className="bi bi-exclamation-triangle text-danger me-2"></i>
+                  Confirm Rejection
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setShowRejectConfirm(false)}></button>
               </div>
-              <div className="modal-body">
-                <p>Are you sure you want to reject this transaction?</p>
-                <p className="text-muted small">
+              <div className="modal-body p-4">
+                <p style={{ fontFamily: 'Inter, sans-serif' }}>Are you sure you want to reject this transaction?</p>
+                <p className="text-muted small" style={{ fontFamily: 'Inter, sans-serif' }}>
                   This will mark the transaction as rejected and notify the user with the reason.
                 </p>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowRejectConfirm(false)}>
+              <div className="modal-footer border-top">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary" 
+                  onClick={() => setShowRejectConfirm(false)}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
+                >
                   Cancel
                 </button>
                 <button
@@ -692,7 +917,9 @@ const Transactions = () => {
                     setShowRejectConfirm(false)
                     handleAction("rejected")
                   }}
+                  style={{ fontFamily: 'Inter, sans-serif', borderRadius: '0' }}
                 >
+                  <i className="bi bi-x-lg me-2"></i>
                   Reject
                 </button>
               </div>

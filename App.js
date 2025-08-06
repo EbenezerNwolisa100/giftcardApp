@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { useEffect, useState } from "react"
 import { ActivityIndicator, View, Platform } from "react-native"
+import { useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
 import { supabase } from "./screens/supabaseClient"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
@@ -74,6 +75,7 @@ function AuthStack() {
 
 function LoggedInTabs() {
   const { theme } = useTheme() // Use theme context
+  const insets = useSafeAreaInsets()
 
   return (
     <Tab.Navigator
@@ -126,15 +128,21 @@ function LoggedInTabs() {
         tabBarInactiveTintColor: theme.tabBarInactive, // Use theme color
         tabBarBackground: () => <TabBarBackground />,
         tabBarStyle: {
-          position: "relative",
-          height: Platform.OS === "ios" ? 85 : 70,
+          position: "absolute",
+          height: Platform.OS === "ios" ? 85 : 70 + insets.bottom,
           borderTopWidth: 0,
-          elevation: 0,
-          shadowColor: "transparent",
+          elevation: Platform.OS === "android" ? 8 : 0,
+          shadowColor: Platform.OS === "android" ? "#000" : "transparent",
+          shadowOffset: Platform.OS === "android" ? { width: 0, height: -2 } : { width: 0, height: 0 },
+          shadowOpacity: Platform.OS === "android" ? 0.1 : 0,
+          shadowRadius: Platform.OS === "android" ? 4 : 0,
           backgroundColor: "transparent",
           paddingTop: 8,
-          paddingBottom: Platform.OS === "ios" ? 25 : 8,
+          paddingBottom: Platform.OS === "ios" ? 25 : 8 + insets.bottom,
           paddingHorizontal: 16,
+          bottom: 0,
+          left: 0,
+          right: 0,
         },
         tabBarItemStyle: {
           paddingVertical: 4,
@@ -214,16 +222,17 @@ export default function App() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#0A1F44", // Hardcoded darkTheme.primary for initial loading
+          backgroundColor: "#F0F8FF", // Light theme background
         }}
       >
-        <ActivityIndicator size="large" color="#3D7DFF" /> {/* Hardcoded darkTheme.accent */}
+        <ActivityIndicator size="large" color="#244E80" /> {/* Light theme accent */}
       </View>
     )
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
       <ThemeProvider>
         <NavigationContainer>
           {session ? (
@@ -259,6 +268,7 @@ export default function App() {
           {/* Removed global StatusBar here, as individual screens handle it */}
         </NavigationContainer>
       </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   )
 }
