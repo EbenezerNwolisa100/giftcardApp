@@ -49,8 +49,14 @@ export default function FundWallet() {
   const [showFlutterwaveWebView, setShowFlutterwaveWebView] = useState(false)
   const [flutterwaveUrl, setFlutterwaveUrl] = useState("")
   const [flutterwaveReference, setFlutterwaveReference] = useState("")
-  const [alternativeFlutterwaveUrl, setAlternativeFlutterwaveUrl] = useState("")
-  const [legacyFlutterwaveUrl, setLegacyFlutterwaveUrl] = useState("")
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
+  const [hasNavigated, setHasNavigated] = useState(false)
+  const [hasStartedVerification, setHasStartedVerification] = useState(false)
+  const [isWebViewLoading, setIsWebViewLoading] = useState(false)
+  const [currentWebViewUrl, setCurrentWebViewUrl] = useState("")
+  const [successDetected, setSuccessDetected] = useState(false)
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false)
+  const [currentPaymentMethod, setCurrentPaymentMethod] = useState("")
 
   const navigation = useNavigation()
   const { theme, isDarkTheme } = useTheme()
@@ -90,6 +96,11 @@ export default function FundWallet() {
 
   useEffect(() => {
     fetchProcessingFee()
+    
+    // Cleanup function to reset states when component unmounts
+    return () => {
+      resetPaymentStates()
+    }
   }, [fetchProcessingFee])
 
   useFocusEffect(
@@ -118,17 +129,17 @@ export default function FundWallet() {
     
     try {
       // Call your PHP backend API to initialize Flutterwave payment
-      const response = await fetch('http://localhost:8000/flutterwave-api.php/initialize', {
+      const response = await fetch('https://wallet.qfundledger.com/flutterwave-api.php/initialize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: totalAmount,
+          amount: totalAmount, // Send the total amount (including fee) - user pays this
           email: email,
           reference: reference,
           metadata: {
-            amount: amount.toString(),
+            amount: amount.toString(), // Base amount to be credited
             processing_fee: fee.toString(),
             total_amount: totalAmount.toString()
           }
@@ -141,7 +152,7 @@ export default function FundWallet() {
         console.log("Flutterwave payment initialized:", data);
         return {
           paymentUrl: data.data.payment_url,
-          reference: reference
+          reference: data.data.reference || reference // Use Flutterwave's reference if available
         };
       } else {
         throw new Error(data.error || 'Failed to initialize payment');
@@ -150,6 +161,21 @@ export default function FundWallet() {
       console.error('Error initializing Flutterwave payment:', error);
       throw error;
     }
+  }
+
+  const resetPaymentStates = () => {
+    setShowFlutterwaveWebView(false)
+    setFlutterwaveUrl("")
+    setFlutterwaveReference("")
+    setIsVerifyingPayment(false)
+    setHasStartedVerification(false)
+    setHasNavigated(false)
+    setFeedback("")
+    setIsWebViewLoading(false)
+    setCurrentWebViewUrl("")
+    setSuccessDetected(false)
+    setIsPaymentProcessing(false)
+    setCurrentPaymentMethod("")
   }
 
   const handleFlutterwave = async () => {
@@ -170,8 +196,13 @@ export default function FundWallet() {
     console.log("Using Flutterwave public key:", FLUTTERWAVE_PUBLIC_KEY)
     console.log("Flutterwave public key length:", FLUTTERWAVE_PUBLIC_KEY.length)
     
+    // Reset all payment states for new payment
+    resetPaymentStates()
+    
     setIsProcessingFlutterwave(true)
     setFlutterwaveLoading(true)
+    setIsPaymentProcessing(true) // Start payment processing state
+    setCurrentPaymentMethod("flutterwave") // Set current payment method
     setShowFlutterwaveModal(false)
     setFeedback("Initializing Flutterwave payment...")
 
@@ -187,8 +218,9 @@ export default function FundWallet() {
       const { paymentUrl, reference } = await generateFlutterwavePayment(enteredAmount, user.email)
       
       console.log("User email:", user.email) // Debug log
-      console.log("Amount:", enteredAmount) // Debug log
+      console.log("Base amount:", enteredAmount) // Debug log
       console.log("Processing fee:", processingFee) // Debug log
+      console.log("Total amount to pay:", enteredAmount + processingFee) // Debug log
       console.log("Payment URL:", paymentUrl) // Debug log
       
       // Store reference for verification
@@ -199,10 +231,19 @@ export default function FundWallet() {
       setShowFlutterwaveWebView(true)
       setFeedback("")
       
+      // Set a timeout to prevent hanging
+      setTimeout(() => {
+        if (showFlutterwaveWebView && !hasNavigated && !isVerifyingPayment) {
+          console.log('Payment timeout - closing WebView')
+          handlePaymentFailure("Payment timeout - please try again")
+        }
+      }, 300000) // 5 minutes timeout
+      
       // For debugging - you can check the console to see the generated URL
       
     } catch (e) {
       setFeedback("")
+      setIsPaymentProcessing(false) // Stop payment processing on error
       Alert.alert("Error", e.message || "Failed to initialize payment.")
     } finally {
       setFlutterwaveLoading(false)
@@ -212,51 +253,134 @@ export default function FundWallet() {
 
   const handleWebViewNavigationStateChange = (navState) => {
     const { url } = navState
-    console.log("WebView URL:", url) // Debug log
+    console.log("=== WEBVIEW NAVIGATION ===")
+    console.log("WebView URL:", url)
+    console.log("Current states - isVerifyingPayment:", isVerifyingPayment, "hasStartedVerification:", hasStartedVerification, "hasNavigated:", hasNavigated, "isWebViewLoading:", isWebViewLoading)
+    
+    // Track current URL
+    setCurrentWebViewUrl(url)
     
     // Only process if we have a reference to track
-    if (!flutterwaveReference) return
+    if (!flutterwaveReference) {
+      console.log("No flutterwave reference available for tracking")
+      return
+    }
     
-    // Check for Flutterwave error pages
+    console.log("Current flutterwave reference:", flutterwaveReference)
+    
+    // Prevent processing if already navigating or verifying
+    if (hasNavigated || isVerifyingPayment || hasStartedVerification) {
+      console.log("Already processing payment, ignoring navigation change")
+      return
+    }
+    
+    // IMMEDIATE SUCCESS DETECTION - Check for success URLs first, before anything else
+    // This should catch the success URL before any error can be displayed
+    if (url.includes('status=successful') || url.includes('status=success')) {
+      console.log("=== IMMEDIATE SUCCESS DETECTION ===")
+      console.log("Payment success detected in URL:", url)
+      
+      // Close WebView IMMEDIATELY to prevent any error screen from showing
+      setShowFlutterwaveWebView(false)
+      setIsWebViewLoading(false) // Stop loading state immediately
+      setSuccessDetected(true) // Set success detected state
+      
+      // Extract transaction_id from URL if available
+      const urlParams = new URLSearchParams(url.split('?')[1] || '')
+      const transactionId = urlParams.get('transaction_id')
+      const txRef = urlParams.get('tx_ref')
+      
+      console.log("URL params - transaction_id:", transactionId, "tx_ref:", txRef)
+      
+      // Process success immediately
+      if (transactionId) {
+        console.log("Found transaction ID:", transactionId)
+        handlePaymentSuccess(transactionId)
+      } else if (txRef && txRef === flutterwaveReference) {
+        console.log("Found matching tx_ref:", txRef)
+        handlePaymentSuccess()
+      } else {
+        handlePaymentSuccess()
+      }
+      return // Exit immediately to prevent any other processing
+    }
+    
+    // Check for Flutterwave error pages - be more specific
     if (url.includes('error') || url.includes('failed') || url.includes('invalid')) {
       console.log("Flutterwave error detected in URL:", url)
       handlePaymentFailure("Payment failed - please try again")
       return
     }
     
-    // Check for Flutterwave success/cancel patterns
-    // Flutterwave typically redirects to success/cancel URLs with status parameters
-    if (url.includes('status=successful') || url.includes('status=success')) {
-      // Payment successful - verify and process
-      handlePaymentSuccess()
-    } else if (url.includes('status=cancelled') || url.includes('status=cancel')) {
-      // Payment cancelled
+    // Check for cancel/failed status
+    if (url.includes('status=cancelled') || url.includes('status=cancel')) {
+      console.log("Payment cancelled detected in URL:", url)
       handlePaymentFailure("Payment was cancelled")
+      return
     } else if (url.includes('status=failed')) {
-      // Payment failed
+      console.log("Payment failed detected in URL:", url)
       handlePaymentFailure("Payment failed")
+      return
     }
+    
+    // Prevent processing if WebView is still loading (for other URLs)
+    if (isWebViewLoading) {
+      console.log("WebView is still loading, ignoring navigation change")
+      return
+    }
+    
     // Don't process other URLs - let user complete the payment flow
   }
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (transactionId = null) => {
+    // Prevent double processing
+    if (isVerifyingPayment || hasStartedVerification || hasNavigated) {
+      console.log('Payment verification already in progress or completed, skipping...')
+      return
+    }
+    
+    console.log('=== STARTING PAYMENT VERIFICATION ===')
+    console.log('Transaction ID:', transactionId)
+    console.log('Flutterwave Reference:', flutterwaveReference)
+    console.log('Current hasNavigated state:', hasNavigated)
+    
+    setIsVerifyingPayment(true)
+    setHasStartedVerification(true)
+    
     try {
       setFeedback("Payment successful! Verifying transaction...")
       
+      console.log('Starting payment verification...')
+      console.log('Reference to verify:', flutterwaveReference)
+      console.log('Transaction ID to verify:', transactionId)
+      
+      // Use transaction ID if available, otherwise use reference
+      const requestData = {
+        reference: transactionId || flutterwaveReference
+      }
+      
+      console.log('Sending verification data:', requestData)
+      
       // Verify the payment with your PHP backend API
-      const verificationResponse = await fetch('http://localhost:8000/flutterwave-api.php/verify', {
+      console.log('Making verification request to:', 'https://wallet.qfundledger.com/flutterwave-api.php/verify')
+      console.log('Request data:', requestData)
+      
+      const verificationResponse = await fetch('https://wallet.qfundledger.com/flutterwave-api.php/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          reference: flutterwaveReference
-        })
+        body: JSON.stringify(requestData)
       });
       
+      console.log('Verification response status:', verificationResponse.status)
+      console.log('Verification response headers:', verificationResponse.headers)
+      
       const verificationData = await verificationResponse.json();
+      console.log('Verification response data:', verificationData)
       
       if (!verificationData.success) {
+        console.log('Verification failed with data:', verificationData)
         throw new Error(verificationData.error || 'Payment verification failed');
       }
       
@@ -270,7 +394,50 @@ export default function FundWallet() {
       const enteredAmount = Number(amount) || 0
       const fee = processingFee
       
+      // Check if transaction already exists to prevent duplicates
+      console.log('Checking for existing transaction with reference:', flutterwaveReference)
+      const { data: existingTx, error: existingError } = await supabase
+        .from("wallet_transactions")
+        .select("id, amount, status, created_at")
+        .eq("user_id", user.id)
+        .eq("type", "fund")
+        .eq("payment_method", "flutterwave")
+        .eq("reference", flutterwaveReference)
+        .limit(1)
+      
+      if (existingError) {
+        console.log('Error checking existing transaction:', existingError)
+      }
+      
+      console.log('Existing transaction check result:', existingTx)
+      
+      if (existingTx && existingTx.length > 0) {
+        const existingTransaction = existingTx[0]
+        console.log('Transaction already exists:', existingTransaction)
+        
+        // Navigate to success (WebView already closed)
+        setHasNavigated(true)
+        navigation.navigate("FundingResult", { 
+          success: true,
+          amount: enteredAmount,
+          paymentMethod: "flutterwave"
+        })
+        return
+      }
+      
       // Create the transaction record
+      console.log('Creating new transaction record with data:', {
+        user_id: user.id,
+        type: "fund",
+        amount: enteredAmount,
+        fee: fee,
+        status: "completed",
+        payment_method: "flutterwave",
+        reference: flutterwaveReference,
+        flutterwave_reference: flutterwaveReference,
+        description: `Wallet funded via Flutterwave (fee: ₦${fee})`
+      })
+      
       const { data: txData, error: txError } = await supabase.from("wallet_transactions").insert([
         {
           user_id: user.id,
@@ -285,10 +452,17 @@ export default function FundWallet() {
         },
       ]).select().single()
       
-      if (txError) throw txError
+      if (txError) {
+        console.log('Error creating transaction:', txError)
+        throw txError
+      }
       
-      // Close WebView and navigate to success
-      setShowFlutterwaveWebView(false)
+      console.log('Transaction created successfully:', txData)
+      
+      // Navigate to success (WebView already closed)
+      console.log('Navigating to success page...')
+      setHasNavigated(true)
+      setIsPaymentProcessing(false) // Stop payment processing
       navigation.navigate("FundingResult", { 
         success: true,
         amount: enteredAmount,
@@ -296,14 +470,56 @@ export default function FundWallet() {
       })
       
     } catch (e) {
-      handlePaymentFailure(e.message)
+      console.log('=== PAYMENT VERIFICATION ERROR ===')
+      console.log('Error message:', e.message)
+      console.log('Error stack:', e.stack)
+      console.log('Current navigation state - hasNavigated:', hasNavigated)
+      console.log('Current verification state - isVerifyingPayment:', isVerifyingPayment)
+      console.log('Current verification state - hasStartedVerification:', hasStartedVerification)
+      console.log('Flutterwave reference:', flutterwaveReference)
+      console.log('Amount:', amount)
+      console.log('Processing fee:', processingFee)
+      
+      // Only handle failure if we haven't already navigated
+      if (!hasNavigated) {
+        handlePaymentFailure(e.message)
+      }
+    } finally {
+      setIsVerifyingPayment(false)
+      console.log('Verification process completed, isVerifyingPayment set to false')
     }
   }
 
   const handlePaymentFailure = (errorMessage = "Payment was cancelled or failed") => {
+    console.log('=== HANDLING PAYMENT FAILURE ===')
+    console.log('Error message:', errorMessage)
+    console.log('Current hasNavigated state:', hasNavigated)
+    console.log('Current isVerifyingPayment state:', isVerifyingPayment)
+    console.log('Current hasStartedVerification state:', hasStartedVerification)
+    
+    // Prevent multiple navigations
+    if (hasNavigated) {
+      console.log('Already navigated, skipping failure navigation')
+      return
+    }
+    
+    console.log('Closing WebView and resetting states...')
     setShowFlutterwaveWebView(false)
     setFeedback("")
-    Alert.alert("Payment Failed", errorMessage)
+    setIsVerifyingPayment(false)
+    setHasStartedVerification(false)
+    setIsPaymentProcessing(false) // Stop payment processing
+    
+    // Set hasNavigated to prevent further processing
+    setHasNavigated(true)
+    
+    console.log('Navigating to failure page')
+    // Navigate to failure page
+    navigation.navigate("FundingResult", { 
+      success: false,
+      error: errorMessage,
+      amount: Number(amount) || 0
+    })
   }
 
   const handleManualTransfer = async () => {
@@ -317,6 +533,8 @@ export default function FundWallet() {
     }
     if (loading) return;
     setLoading(true)
+    setIsPaymentProcessing(true) // Start payment processing state
+    setCurrentPaymentMethod("manual_transfer") // Set current payment method
     setFeedback("Uploading proof and submitting request...")
 
     try {
@@ -373,6 +591,7 @@ export default function FundWallet() {
       if (txError) throw txError
 
       setLoading(false)
+      setIsPaymentProcessing(false) // Stop payment processing
       setFeedback("")
       navigation.navigate("FundingResult", { 
         success: true,
@@ -382,6 +601,7 @@ export default function FundWallet() {
       })
     } catch (e) {
       setLoading(false)
+      setIsPaymentProcessing(false) // Stop payment processing on error
       setFeedback("")
       navigation.navigate("FundingResult", { 
         success: false,
@@ -395,6 +615,42 @@ export default function FundWallet() {
     container: {
       flex: 1,
       backgroundColor: theme.background,
+    },
+    // Loading Overlay Styles
+    loadingOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    loadingContainer: {
+      backgroundColor: theme.surface,
+      borderRadius: 20,
+      padding: 30,
+      alignItems: 'center',
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    loadingText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+      marginTop: 16,
+      textAlign: 'center',
+    },
+    loadingSubtext: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginTop: 8,
+      textAlign: 'center',
     },
     // Fixed Header Styles
     fixedHeader: {
@@ -753,25 +1009,7 @@ export default function FundWallet() {
       marginTop: 12,
       fontSize: 16,
     },
-    testButtonContainer: {
-      position: 'absolute',
-      bottom: 20,
-      left: 20,
-      right: 20,
-      zIndex: 1000,
-    },
-    testButton: {
-      backgroundColor: theme.accent,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      alignItems: 'center',
-    },
-    testButtonText: {
-      color: theme.primary,
-      fontSize: 14,
-      fontWeight: 'bold',
-    },
+
   })
 
   // FundWallet Skeleton Component
@@ -1093,111 +1331,177 @@ export default function FundWallet() {
             animationOut="slideOutDown"
           >
             <View style={styles.webViewContainer}>
-              <View style={styles.webViewHeader}>
-                <TouchableOpacity
-                  style={styles.webViewCloseButton}
-                  onPress={() => setShowFlutterwaveWebView(false)}
-                >
-                  <Ionicons name="close" size={24} color={theme.text} />
-                </TouchableOpacity>
-                <Text style={[styles.webViewTitle, { color: theme.text }]}>Flutterwave Payment</Text>
-                <View style={{ width: 40 }} />
-              </View>
-              <WebView
-                source={{ uri: flutterwaveUrl }}
-                style={styles.webView}
-                onNavigationStateChange={handleWebViewNavigationStateChange}
-                onError={(syntheticEvent) => {
-                  const { nativeEvent } = syntheticEvent
-                  console.log('WebView error:', nativeEvent)
-                  handlePaymentFailure("Failed to load payment page")
-                }}
-                onHttpError={(syntheticEvent) => {
-                  const { nativeEvent } = syntheticEvent
-                  console.log('WebView HTTP error:', nativeEvent)
-                  handlePaymentFailure("Payment page error")
-                }}
-                onLoadStart={() => {
-                  console.log('WebView started loading:', flutterwaveUrl)
-                }}
-                onLoadEnd={() => {
-                  console.log('WebView finished loading')
-                  // Check if the page has content
-                  setTimeout(() => {
-                    console.log('Checking if Flutterwave page loaded properly...')
-                  }, 2000)
-                }}
-                onMessage={(event) => {
-                  console.log('WebView message:', event.nativeEvent.data)
-                }}
-                startInLoadingState={true}
-                renderLoading={() => (
-                  <View style={styles.webViewLoading}>
-                    <ActivityIndicator size="large" color={theme.accent} />
-                    <Text style={[styles.webViewLoadingText, { color: theme.text }]}>
-                      Loading Flutterwave...
-                    </Text>
+              {successDetected ? (
+                // Show success processing message instead of WebView
+                <View style={styles.webViewLoading}>
+                  <ActivityIndicator size="large" color={theme.accent} />
+                  <Text style={[styles.webViewLoadingText, { color: theme.text }]}>
+                    Payment successful! Processing...
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.webViewHeader}>
+                    <TouchableOpacity
+                      style={styles.webViewCloseButton}
+                      onPress={() => {
+                        console.log('User manually closed WebView')
+                        resetPaymentStates()
+                      }}
+                    >
+                      <Ionicons name="close" size={24} color={theme.text} />
+                    </TouchableOpacity>
+                    <Text style={[styles.webViewTitle, { color: theme.text }]}>Flutterwave Payment</Text>
+                    <View style={{ width: 40 }} />
                   </View>
-                )}
-                userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
-              />
-              {/* Test buttons for development */}
-              <View style={styles.testButtonContainer}>
-                <TouchableOpacity
-                  style={styles.testButton}
-                  onPress={handlePaymentSuccess}
-                >
-                  <Text style={styles.testButtonText}>Test: Simulate Payment Success</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.warning }]}
-                  onPress={() => {
-                    setAmount("100") // Set a small test amount
-                    setFeedback("Amount set to ₦100 for testing")
-                  }}
-                >
-                  <Text style={styles.testButtonText}>Set Test Amount (₦100)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.error }]}
-                  onPress={() => {
-                    // Test with a simple HTML page to verify WebView works
-                    const testUrl = 'https://httpbin.org/html'
-                    setFlutterwaveUrl(testUrl)
-                    console.log('Testing WebView with:', testUrl)
-                  }}
-                >
-                  <Text style={styles.testButtonText}>Test WebView (HTTPBin)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.secondary }]}
-                  onPress={() => {
-                    // Try the alternative Flutterwave URL
-                    if (alternativeFlutterwaveUrl) {
-                      setFlutterwaveUrl(alternativeFlutterwaveUrl)
-                      console.log('Trying alternative Flutterwave URL:', alternativeFlutterwaveUrl)
-                    }
-                  }}
-                >
-                  <Text style={styles.testButtonText}>Try Alternative Flutterwave URL</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.testButton, { marginTop: 8, backgroundColor: theme.accent }]}
-                  onPress={() => {
-                    // Try the legacy Flutterwave URL
-                    if (legacyFlutterwaveUrl) {
-                      setFlutterwaveUrl(legacyFlutterwaveUrl)
-                      console.log('Trying legacy Flutterwave URL:', legacyFlutterwaveUrl)
-                    }
-                  }}
-                >
-                  <Text style={styles.testButtonText}>Try Legacy Flutterwave URL</Text>
-                </TouchableOpacity>
-              </View>
+                  <WebView
+                    source={{ uri: flutterwaveUrl }}
+                    style={styles.webView}
+                    onNavigationStateChange={handleWebViewNavigationStateChange}
+                    onShouldStartLoadWithRequest={(request) => {
+                      const { url } = request
+                      console.log('=== SHOULD START LOAD REQUEST ===')
+                      console.log('Request URL:', url)
+                      
+                      // If this is a success URL, prevent loading and handle success immediately
+                      if (url.includes('status=successful') || url.includes('status=success')) {
+                        console.log('Preventing load of success URL to avoid 404 screen')
+                        
+                        // Close WebView immediately
+                        setShowFlutterwaveWebView(false)
+                        setIsWebViewLoading(false)
+                        setSuccessDetected(true) // Set success detected state
+                        
+                        // Extract parameters and handle success
+                        const urlParams = new URLSearchParams(url.split('?')[1] || '')
+                        const transactionId = urlParams.get('transaction_id')
+                        const txRef = urlParams.get('tx_ref')
+                        
+                        console.log("Prevented load URL params - transaction_id:", transactionId, "tx_ref:", txRef)
+                        
+                        if (transactionId) {
+                          handlePaymentSuccess(transactionId)
+                        } else if (txRef && txRef === flutterwaveReference) {
+                          handlePaymentSuccess()
+                        } else {
+                          handlePaymentSuccess()
+                        }
+                        
+                        return false // Prevent the WebView from loading this URL
+                      }
+                      
+                      // Allow all other URLs to load normally
+                      return true
+                    }}
+                    onError={(syntheticEvent) => {
+                      const { nativeEvent } = syntheticEvent
+                      console.log('WebView error:', nativeEvent)
+                      if (!hasNavigated) {
+                        handlePaymentFailure("Failed to load payment page")
+                      }
+                    }}
+                    onHttpError={(syntheticEvent) => {
+                      const { nativeEvent } = syntheticEvent
+                      console.log('WebView HTTP error:', nativeEvent)
+                      
+                      // Check if the error URL contains success parameters
+                      const errorUrl = nativeEvent.url || ''
+                      console.log('HTTP error URL:', errorUrl)
+                      
+                      if (errorUrl.includes('status=successful') || errorUrl.includes('status=success')) {
+                        console.log('Payment success detected in error URL despite HTTP error')
+                        
+                        // Close WebView immediately to prevent 404 screen from showing
+                        setShowFlutterwaveWebView(false)
+                        setSuccessDetected(true) // Set success detected state
+                        
+                        // Extract transaction_id from URL if available
+                        const urlParams = new URLSearchParams(errorUrl.split('?')[1] || '')
+                        const transactionId = urlParams.get('transaction_id')
+                        
+                        if (transactionId) {
+                          console.log("Found transaction ID in error URL:", transactionId)
+                          handlePaymentSuccess(transactionId)
+                        } else {
+                          handlePaymentSuccess()
+                        }
+                      } else if (!hasNavigated) {
+                        handlePaymentFailure("Payment page error")
+                      }
+                    }}
+                    onLoadStart={() => {
+                      console.log('WebView started loading:', flutterwaveUrl)
+                      setIsWebViewLoading(true)
+                    }}
+                    onLoadEnd={() => {
+                      console.log('WebView finished loading')
+                      // Check if the page has content
+                      setTimeout(() => {
+                        console.log('Checking if Flutterwave page loaded properly...')
+                        setIsWebViewLoading(false)
+                        
+                        // Additional check for success parameters in current URL
+                        if (showFlutterwaveWebView && !hasNavigated && !isVerifyingPayment) {
+                          const currentUrl = currentWebViewUrl // Use the tracked current URL
+                          console.log('Checking current URL for success parameters:', currentUrl)
+                          
+                          if (currentUrl.includes('status=successful') || currentUrl.includes('status=success')) {
+                            console.log('Success detected in current URL after load')
+                            const urlParams = new URLSearchParams(currentUrl.split('?')[1] || '')
+                            const transactionId = urlParams.get('transaction_id')
+                            const txRef = urlParams.get('tx_ref')
+                            
+                            console.log("Load end URL params - transaction_id:", transactionId, "tx_ref:", txRef)
+                            
+                            if (transactionId) {
+                              handlePaymentSuccess(transactionId)
+                            } else if (txRef && txRef === flutterwaveReference) {
+                              handlePaymentSuccess()
+                            } else {
+                              handlePaymentSuccess()
+                            }
+                          }
+                        }
+                      }, 2000)
+                    }}
+                    startInLoadingState={true}
+                    renderLoading={() => (
+                      <View style={styles.webViewLoading}>
+                        <ActivityIndicator size="large" color={theme.accent} />
+                        <Text style={[styles.webViewLoadingText, { color: theme.text }]}>
+                          Loading Flutterwave...
+                        </Text>
+                      </View>
+                    )}
+                    userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+                  />
+                </>
+              )}
             </View>
           </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Payment Processing Loading Overlay */}
+      {isPaymentProcessing && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.accent} />
+            <Text style={styles.loadingText}>
+              {currentPaymentMethod === "flutterwave" 
+                ? "Processing Payment" 
+                : "Submitting Request"
+              }
+            </Text>
+            <Text style={styles.loadingSubtext}>
+              {currentPaymentMethod === "flutterwave"
+                ? "Please wait while we process your payment..."
+                : "Please wait while we submit your proof of payment..."
+              }
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

@@ -93,22 +93,16 @@ error_log("Flutterwave callback received - Status: {$status}, Reference: {$tx_re
             </div>
         <?php endif; ?>
         
+        <?php if ($transaction_id): ?>
+            <div class="reference">
+                <strong>Transaction ID:</strong> <?php echo htmlspecialchars($transaction_id); ?>
+            </div>
+        <?php endif; ?>
+        
         <div class="redirect-info">
-            <p>You will be redirected back to the app automatically.</p>
-            <p>If you're not redirected, please close this window and return to the app.</p>
+            <p>Payment processing complete.</p>
+            <p>You can close this window and return to the app.</p>
         </div>
     </div>
-
-    <script>
-        // Redirect to the app after 3 seconds
-        setTimeout(function() {
-            const redirectUrl = `giftcardapp://payment-callback?status=<?php echo urlencode($status); ?>&reference=<?php echo urlencode($tx_ref); ?>&transaction_id=<?php echo urlencode($transaction_id); ?>`;
-            window.location.href = redirectUrl;
-        }, 3000);
-        
-        // Also try to redirect immediately
-        const redirectUrl = `giftcardapp://payment-callback?status=<?php echo urlencode($status); ?>&reference=<?php echo urlencode($tx_ref); ?>&transaction_id=<?php echo urlencode($transaction_id); ?>`;
-        window.location.href = redirectUrl;
-    </script>
 </body>
 </html> 

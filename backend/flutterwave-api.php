@@ -83,7 +83,7 @@ function handleInitializePayment() {
     // Prepare Flutterwave payload
     $payload = [
         'tx_ref' => $reference,
-        'amount' => $amount * 100, // Convert to kobo
+        'amount' => $amount, // Send amount in naira (Flutterwave will handle display)
         'currency' => 'NGN',
         'redirect_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/backend/callback.php',
         'customer' => [
@@ -93,20 +93,30 @@ function handleInitializePayment() {
         'meta' => $metadata,
         'customizations' => [
             'title' => 'Gift Card App',
-            'description' => 'Wallet Funding',
-            'logo' => 'https://your-app.com/logo.png'
+            'description' => 'Wallet Funding - ₦' . number_format($amount, 0)
         ]
     ];
     
     // Make request to Flutterwave
     $response = makeFlutterwaveRequest('https://api.flutterwave.com/v3/payments', $payload, $FLUTTERWAVE_SECRET_KEY);
     
+    // Log the request for debugging
+    error_log("Flutterwave request - Amount sent: " . $amount . " naira");
+    
     if ($response['status'] === 'success') {
+        // Log the response for debugging
+        error_log("Flutterwave response: " . json_encode($response['data']));
+        error_log("Flutterwave tx_ref: " . ($response['data']['tx_ref'] ?? 'NULL'));
+        error_log("Our reference: " . $reference);
+        
+        $final_reference = $response['data']['tx_ref'] ?? $reference;
+        error_log("Final reference being returned: " . $final_reference);
+        
         echo json_encode([
             'success' => true,
             'data' => [
                 'payment_url' => $response['data']['link'],
-                'reference' => $reference,
+                'reference' => $final_reference,
                 'status' => $response['data']['status']
             ]
         ]);
@@ -122,6 +132,11 @@ function handleInitializePayment() {
 function handleVerifyPayment() {
     global $FLUTTERWAVE_SECRET_KEY;
     
+    // Test log file creation
+    logMessage("=== VERIFICATION REQUEST START ===");
+    logMessage("Verification request received - Method: " . $_SERVER['REQUEST_METHOD']);
+    logMessage("Verification request body: " . file_get_contents('php://input'));
+    
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed']);
@@ -130,27 +145,43 @@ function handleVerifyPayment() {
     
     // Get JSON input
     $input = json_decode(file_get_contents('php://input'), true);
+    logMessage("Parsed input: " . json_encode($input));
     
     if (!$input || !isset($input['reference'])) {
+        logMessage("Verification failed - Missing reference");
         http_response_code(400);
         echo json_encode(['error' => 'Reference is required']);
         return;
     }
     
     $reference = $input['reference'];
+    logMessage("Verifying reference: " . $reference);
     
     // Make request to Flutterwave verification endpoint
-    $response = makeFlutterwaveRequest("https://api.flutterwave.com/v3/transactions/{$reference}/verify", null, $FLUTTERWAVE_SECRET_KEY, 'GET');
+    $verification_url = "https://api.flutterwave.com/v3/transactions/{$reference}/verify";
+    logMessage("Calling Flutterwave verification URL: " . $verification_url);
+    
+    $response = makeFlutterwaveRequest($verification_url, null, $FLUTTERWAVE_SECRET_KEY, 'GET');
+    logMessage("Flutterwave verification response: " . json_encode($response));
+    
+    // If first attempt fails, try with the reference as transaction ID
+    if ($response['status'] !== 'success' && is_numeric($reference)) {
+        logMessage("First verification failed, trying with reference as transaction ID");
+        $verification_url = "https://api.flutterwave.com/v3/transactions/{$reference}/verify";
+        $response = makeFlutterwaveRequest($verification_url, null, $FLUTTERWAVE_SECRET_KEY, 'GET');
+        logMessage("Second verification attempt response: " . json_encode($response));
+    }
     
     if ($response['status'] === 'success') {
         $transaction = $response['data'];
         
         if ($transaction['status'] === 'successful') {
+            logMessage("Payment verification successful");
             echo json_encode([
                 'success' => true,
                 'data' => [
                     'reference' => $transaction['tx_ref'],
-                    'amount' => $transaction['amount'] / 100, // Convert from kobo
+                    'amount' => $transaction['amount'], // Amount is already in naira
                     'currency' => $transaction['currency'],
                     'status' => $transaction['status'],
                     'customer_email' => $transaction['customer']['email'],
@@ -159,6 +190,7 @@ function handleVerifyPayment() {
                 ]
             ]);
         } else {
+            logMessage("Payment not successful - status: " . $transaction['status']);
             echo json_encode([
                 'success' => false,
                 'error' => 'Payment not successful',
@@ -166,10 +198,12 @@ function handleVerifyPayment() {
             ]);
         }
     } else {
+        logMessage("Verification failed - response: " . json_encode($response));
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'error' => 'Failed to verify payment: ' . ($response['message'] ?? 'Unknown error')
+            'error' => 'Failed to verify payment: ' . ($response['message'] ?? 'Unknown error'),
+            'debug' => $response
         ]);
     }
 }
@@ -228,15 +262,64 @@ function handleWebhook() {
 function handleCallback() {
     $status = $_GET['status'] ?? '';
     $tx_ref = $_GET['tx_ref'] ?? '';
+    $transaction_id = $_GET['transaction_id'] ?? '';
     
-    // Redirect to your app with payment status
-    $redirect_url = "giftcardapp://payment-callback?status={$status}&reference={$tx_ref}";
+    logMessage("Callback received - Status: {$status}, TX_REF: {$tx_ref}, Transaction ID: {$transaction_id}");
     
-    header("Location: {$redirect_url}");
+    // Return a simple HTML page that the WebView can load
+    $html = '<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Complete</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 400px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .pending { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Payment Complete</h2>
+        <p>Your payment has been processed.</p>
+        <p><strong>Status:</strong> <span class="' . ($status === 'successful' ? 'success' : 'error') . '">' . ucfirst($status) . '</span></p>
+        <p><strong>Reference:</strong> ' . htmlspecialchars($tx_ref) . '</p>';
+    
+    if ($transaction_id) {
+        $html .= '<p><strong>Transaction ID:</strong> ' . htmlspecialchars($transaction_id) . '</p>';
+    }
+    
+    $html .= '
+        <p>You can close this window and return to the app.</p>
+    </div>
+</body>
+</html>';
+    
+    header('Content-Type: text/html; charset=utf-8');
+    echo $html;
     exit;
 }
 
 function makeFlutterwaveRequest($url, $data = null, $secret_key, $method = 'POST') {
+    logMessage("Making Flutterwave request - URL: {$url}, Method: {$method}");
+    if ($data) {
+        logMessage("Request data: " . json_encode($data));
+    }
+    
     $ch = curl_init();
     
     $headers = [
@@ -258,6 +341,11 @@ function makeFlutterwaveRequest($url, $data = null, $secret_key, $method = 'POST
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
     
+    logMessage("Flutterwave response - HTTP Code: {$http_code}, Response: {$response}");
+    if ($error) {
+        logMessage("cURL Error: {$error}");
+    }
+    
     curl_close($ch);
     
     if ($error) {
@@ -268,11 +356,28 @@ function makeFlutterwaveRequest($url, $data = null, $secret_key, $method = 'POST
         return ['status' => 'error', 'message' => "HTTP {$http_code}", 'response' => $response];
     }
     
-    return json_decode($response, true);
+    $decoded_response = json_decode($response, true);
+    logMessage("Decoded response: " . json_encode($decoded_response));
+    
+    return $decoded_response;
 }
 
 // Log function for debugging
 function logMessage($message) {
     error_log("[Flutterwave API] " . $message);
+    
+    // Also write to a custom log file for easy access
+    $log_file = __DIR__ . '/flutterwave_debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[{$timestamp}] {$message}\n";
+    
+    // Try to write to log file
+    $result = file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+    if ($result === false) {
+        error_log("Failed to write to log file: " . $log_file);
+    }
 }
+
+// Test log file creation on script load
+logMessage("PHP script loaded - testing log file creation");
 ?> 

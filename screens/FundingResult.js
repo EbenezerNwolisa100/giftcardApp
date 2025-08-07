@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect } from "react"
 import {
   View,
   Text,
@@ -19,6 +19,28 @@ export default function FundingResult() {
   const route = useRoute()
   const { theme, isDarkTheme } = useTheme()
   const { success, amount, paymentMethod, status, error } = route.params || {}
+
+  // Add comprehensive logging
+  console.log('=== FUNDING RESULT SCREEN ===')
+  console.log('Route params:', route.params)
+  console.log('Success:', success)
+  console.log('Amount:', amount)
+  console.log('Payment method:', paymentMethod)
+  console.log('Status:', status)
+  console.log('Error:', error)
+  console.log('Full route params object:', JSON.stringify(route.params, null, 2))
+
+  // Log when component mounts and when params change
+  useEffect(() => {
+    console.log('=== FUNDING RESULT SCREEN MOUNTED ===')
+    console.log('Component mounted with params:', route.params)
+    console.log('Success state:', success)
+    console.log('Error state:', error)
+    
+    return () => {
+      console.log('=== FUNDING RESULT SCREEN UNMOUNTING ===')
+    }
+  }, [route.params, success, error])
 
   const styles = StyleSheet.create({
     container: {
@@ -315,7 +337,10 @@ export default function FundingResult() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.replace("Main", { screen: "Dashboard" })}
+            onPress={() => {
+              console.log('Navigating to Dashboard...')
+              navigation.replace("Main", { screen: "Dashboard" })
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.primaryButtonText}>Go to Dashboard</Text>
@@ -324,7 +349,10 @@ export default function FundingResult() {
 
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => navigation.replace("Main", { screen: "Transactions" })}
+            onPress={() => {
+              console.log('Navigating to Transactions...')
+              navigation.replace("Main", { screen: "Transactions" })
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.secondaryButtonText}>View Transactions</Text>
